@@ -78,7 +78,7 @@ class VlmReviewer:
 
     def __init__(
         self,
-        adapter: VLMAdapter,
+        adapter: VLMAdapter | None,
         state_machine: EventStateMachine,
         repository: EventRepository,
         *,
@@ -87,7 +87,10 @@ class VlmReviewer:
         description_max_chars: int,
         auto_decision_threshold: float,
         review_enabled: bool,
+        semaphore: asyncio.Semaphore | None = None,
     ) -> None:
+        if review_enabled and adapter is None:
+            raise ValueError("adapter is required when review_enabled is true")
         if isinstance(timeout_s, bool) or not timeout_s > 0:
             raise ValueError(f"timeout_s must be > 0, got {timeout_s!r}")
         if isinstance(max_concurrency, bool) or not isinstance(max_concurrency, int) or max_concurrency < 1:
@@ -109,7 +112,8 @@ class VlmReviewer:
         self._state = state_machine
         self._repo = repository
         self._timeout_s = float(timeout_s)
-        self._semaphore = asyncio.Semaphore(max_concurrency)
+        # 可由调用方传入共享信号量，使复核与兜底共用 vlm.max_concurrency 的并发上限。
+        self._semaphore = semaphore if semaphore is not None else asyncio.Semaphore(max_concurrency)
         self._description_max_chars = description_max_chars
         self._threshold = float(auto_decision_threshold)
         self._review_enabled = bool(review_enabled)
@@ -181,11 +185,12 @@ class VlmReviewer:
         log_vlm_request(event_id=event_id, image_bytes=len(image_jpeg))
         started = time.monotonic()
 
+        adapter = self._adapter
+        if adapter is None:  # 构造函数已保证复核开启时 adapter 非空，此处仅供类型收窄。
+            raise RuntimeError("VLM adapter is not configured")
         try:
             async with self._semaphore:
-                verdict = await asyncio.wait_for(
-                    self._adapter.review_event(request), timeout=self._timeout_s
-                )
+                verdict = await asyncio.wait_for(adapter.review_event(request), timeout=self._timeout_s)
         except asyncio.TimeoutError:
             self._log_failure(event_id, started, ERROR_TIMEOUT)
             return await self._fail(event_id, ERROR_TIMEOUT)

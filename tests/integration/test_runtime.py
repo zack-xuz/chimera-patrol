@@ -106,7 +106,10 @@ def test_runtime_produces_event_on_good_camera_while_bad_camera_is_offline(tmp_p
     )
     try:
         runtime.start()
-        assert _wait_for(lambda: repo.list_events(camera_id="cam_a")[1] >= 1), "no event from cam_a"
+        # MockAdapter 默认返回 uncertain，复核后事件进入 needs_human。
+        assert _wait_for(
+            lambda: any(e["status"] == "needs_human" for e in repo.list_events(camera_id="cam_a")[0])
+        ), "no reviewed event from cam_a"
     finally:
         runtime.stop()
         loop.call_soon_threadsafe(loop.stop)
@@ -125,5 +128,6 @@ def test_runtime_produces_event_on_good_camera_while_bad_camera_is_offline(tmp_p
     assert total >= 1
     assert all(e["camera_id"] == "cam_a" for e in events)
     assert events[0]["event_type"] == "intrusion"
-    assert events[0]["status"] == "pending_review"
+    assert events[0]["status"] == "needs_human"
+    assert events[0]["vlm_verdict"] == "uncertain"
     assert (tmp_path / "evidence" / events[0]["keyframe_annotated_path"]).is_file()

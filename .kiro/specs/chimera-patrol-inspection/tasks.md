@@ -334,7 +334,7 @@
     - _Requirements: 5.1, 5.5, 5.6, 5.7_
     - 设计参考：VLM 复核层、Error Handling
 
-  - [ ]* 10.6 编写复核失败与复核关闭属性测试
+  - [x]* 10.6 编写复核失败与复核关闭属性测试
     - **Property 13: 复核失败与复核关闭**
     - **Validates: Requirements 5.5, 5.6**
     - 测试文件 tests/property/test_review_failure.py，Hypothesis 示例数不少于 100
@@ -349,12 +349,12 @@
     - 复核结果经状态机写入后触发推送回调位
     - _Requirements: 5.1, 5.6, 6.1_
 
-  - [ ]* 10.9 编写慢 VLM 与故障隔离集成测试
+  - [x]* 10.9 编写慢 VLM 与故障隔离集成测试
     - 注入慢速 VLM，验证检测主链路不被阻塞
     - 注入单路故障与 VLM 异常，验证其他路与功能继续运行
     - _Requirements: 5.7, 12.4_
 
-- [ ] 11. 安全帽双路径集成
+- [x] 11. 安全帽双路径集成
   - [x] 11.1 接入 work_zone 作用域与权重路径
     - 在 chimera_patrol/rules/helmet_scope.py 中实现：该 Camera 配置了 work_zone 时仅参考点落在 work_zone 内的 person 参与安全帽判定，否则全画面参与
     - 权重路径检测结果接入 HelmetTimer 与 RuleEngine
@@ -368,7 +368,7 @@
     - 开关 rules.helmet.vlm_fallback.enabled 默认开启；vlm.review_enabled 为 false 时禁用兜底
     - _Requirements: 3.7, 3.8, 5.6_
 
-  - [ ]* 11.3 编写兜底路径示例测试
+  - [x]* 11.3 编写兜底路径示例测试
     - 验证 Mock 返回未佩戴时产生 vlm_fallback 事件
     - 验证开关关闭或复核关闭时不调用适配器
     - 验证两路事件进入同一复核流程

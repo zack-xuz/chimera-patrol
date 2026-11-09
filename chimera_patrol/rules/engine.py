@@ -15,7 +15,8 @@
 
 时间约定：``process`` 的 ``ts_ms`` 必须单调不减，否则抛出 ``ValueError``。
 
-VLM 兜底（3.7）未在本模块实现，见 ``process`` 中标注 ``VLM fallback hook`` 的位置。
+VLM 兜底（3.7）不在 ``process`` 内执行（它需要异步调用 VLM）。调用方使用
+``collect_fallback_requests`` 与 ``apply_fallback_result`` 完成兜底，见 ``helmet_fallback`` 模块。
 """
 
 from __future__ import annotations
@@ -149,6 +150,7 @@ class RuleEngine:
         )
         self._cooldown.reset()
         self._trajectory.clear()
+        self._fallback_schedule.reset()
         self._last_ts_ms = None
 
     def process(self, frame_result: FrameResult) -> list[CandidateEvent]:
