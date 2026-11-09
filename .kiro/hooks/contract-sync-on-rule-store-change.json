@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "事件类型变更时同步契约文档",
+  "description": "保存 rules 或 store 下的文件后，检查是否新增或修改了事件类型、detection_source、状态或表结构，若有则同步 event-contract.md。",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["chimera_patrol/rules/**/*.py", "chimera_patrol/store/**/*.py", "chimera_patrol/store/schema.sql"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "刚保存了 chimera_patrol/rules/ 或 chimera_patrol/store/ 下的文件。请检查是否新增或修改了事件类型（event_type）、detection_source、事件状态（status）或数据库表与列。若有变更，只更新 .kiro/steering/event-contract.md 中对应的第 2、3、4、9 节，并与 .kiro/specs/chimera-patrol-inspection/design.md 保持一致，不要添加 design.md 中没有的内容。若契约没有变化，不要做任何编辑。"
+  }
+}

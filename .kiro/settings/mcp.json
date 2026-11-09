@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "chimera-vlm": {
+      "command": "C:\\Users\\zack\\.conda\\envs\\chimera-patrol\\python.exe",
+      "args": ["-m", "chimera_patrol.mcp.vlm_server", "--config", "config.yaml"],
+      "env": { "VLM_API_KEY": "${VLM_API_KEY}" },
+      "disabled": false,
+      "autoApprove": ["review_event", "check_helmet_crop"]
+    }
+  }
+}

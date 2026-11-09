@@ -1,0 +1,17 @@
+# Chimera Patrol 依赖清单（精确锁定版本）
+# 版本核对：2026 年 PyPI 最新稳定版；mcp 锁定 1.x 线（1.30.0），因为设计使用 FastMCP，
+# mcp 2.x 已将 FastMCP 改名为 MCPServer。
+ultralytics==8.4.208
+supervision==0.31.5
+fastapi==0.162.2
+uvicorn==0.54.0
+pydantic==2.14.3
+pyyaml==6.0.3
+opencv-python==5.0.0.93
+numpy==2.4.6
+httpx==0.28.1
+imageio-ffmpeg==0.8.1
+mcp==1.30.0
+pytest==9.2.0
+hypothesis==6.170.15
+trackers==2.7.0

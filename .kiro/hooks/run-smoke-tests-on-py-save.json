@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "保存 Python 文件后运行冒烟测试",
+  "description": "保存 chimera_patrol 或 tests 下的 .py 文件后，在 chimera-patrol conda 环境中运行 tests/smoke 冒烟测试。",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["chimera_patrol/**/*.py", "tests/**/*.py"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "C:\\Users\\zack\\.conda\\envs\\chimera-patrol\\python.exe -m pytest tests/smoke -q"
+  }
+}

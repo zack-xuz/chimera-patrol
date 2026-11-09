@@ -1,0 +1,18 @@
+sops:
+  - id: entry_prep
+    name: 入场作业准备
+    camera_ids: ["*"]          # 或具体 Camera ID 列表
+    steps:
+      - id: wear_helmet
+        description: 佩戴安全帽
+        criteria: 头部可见且戴有安全帽，帽带系好
+        requires_sequence: false   # 可选，默认 false；为 true 时结果标注“近似判定”
+      - id: wear_gloves
+        description: 佩戴手套
+        criteria: 双手可见时均戴有手套
+      - id: wear_vest
+        description: 穿反光背心
+        criteria: 躯干穿着带反光条的背心
+      - id: barrier_in_place
+        description: 确认隔离栏就位
+        criteria: 作业区域四周隔离栏已设置，无缺口

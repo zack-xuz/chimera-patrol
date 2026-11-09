@@ -1,0 +1,165 @@
+# Chimera Patrol 演示配置（config.demo.yaml）
+# 本文件是演示配置，仅用于 --demo 离线演示与测试，不得用于真实 VLM 调用。
+# vlm.provider 为 mock（离线确定性返回），因此无需设置 VLM_API_KEY 即可启动。
+# 真实运行请使用 config.yaml。其余字段与 config.yaml 相同，注释以 config.yaml 为准。
+
+# ---------------------------------------------------------------- 应用 / 数据库 / 日志 / WebSocket
+
+app:
+  host: 127.0.0.1          # 监听地址，默认仅本机访问
+  port: 8000               # 监听端口，取值 1-65535
+  data_dir: ./data         # 数据根目录
+
+database:
+  path: ./data/chimera.db  # SQLite 数据库文件
+
+logging:
+  level: INFO              # DEBUG / INFO / WARNING / ERROR
+  dir: ./data/logs         # 日志目录
+  max_bytes: 10485760      # 单个日志文件上限（字节），默认 10 MB
+  backup_count: 5          # 轮转保留份数
+
+ws:
+  heartbeat_interval_s: 15 # WebSocket 心跳间隔（秒），取值 1-120
+
+# ---------------------------------------------------------------- 视频接入
+
+video:
+  source_dir: ./samples/videos       # 视频目录，目录中每个文件对应一路 Camera
+  file_extensions: [.mp4, .avi, .mkv, .mov]  # 识别的视频扩展名
+  max_cameras: 4                     # 最多接入路数，取值 2-4
+  loop: true                         # 文件源读到末尾后循环播放
+  default_fps: 25                    # 源缺少 fps 信息时使用（1-60）
+  offline_after_failures: 3          # 连续读帧失败多少次后置为离线（1-100）
+  reconnect_interval_s: 5            # 离线后重试间隔（秒，1-300）
+  mjpeg:                             # 浏览器实时画面（MJPEG 流）
+    fps: 10                          # 输出帧率，1-30
+    jpeg_quality: 70                 # JPEG 质量，10-95
+    max_width: 960                   # 最大宽度，超出则等比缩小（160-1920）
+
+# Camera 列表。id 与视频文件主干名（如 intrusion_real.mp4 -> intrusion_real）匹配时覆盖该路配置；
+# 填写 rtsp_url 时改用 RTSP 源；id 无对应文件且有 rtsp_url 时创建纯 RTSP Camera。
+# rois 为区域列表：type 为 intrusion（闯入区，用于区域闯入与滞留）或 work_zone（作业区，
+# 用于安全帽判定作用域）。polygon 为归一化顶点 [x, y]，取值 0~1，每个 ROI 的顶点数需在
+# rules.roi.min_vertices 与 max_vertices 之间，同一 Camera 的 ROI 数不超过 rules.roi.max_per_camera，
+# 且多边形不能自交。
+cameras: []
+# 示例（取消注释后生效）：
+# cameras:
+#   - id: intrusion_real
+#     name: 东门通道
+#     rtsp_url: null                   # 例如 rtsp://user:pass@host/stream，填写后替代文件源
+#     rois:
+#       - id: gate_zone
+#         type: intrusion
+#         name: 东门禁入区
+#         polygon: [[0.1, 0.2], [0.8, 0.2], [0.8, 0.9], [0.1, 0.9]]
+#       - id: work_area
+#         type: work_zone
+#         name: 作业区
+#         polygon: [[0.0, 0.5], [0.5, 0.5], [0.5, 1.0], [0.0, 1.0]]
+
+# 样例视频 ROI 示例（取消注释后生效；坐标与 scripts/generate_samples.py 中 INTRUSION_POLYGON_NORM 一致）：
+# cameras:
+#   - id: intrusion_real              # 对应 samples/videos/intrusion_real.mp4
+#     name: 样例闯入通道
+#     rois:
+#       - id: intrusion_zone
+#         type: intrusion
+#         name: 样例闯入区
+#         polygon: [[0.45, 0.40], [0.94, 0.40], [0.94, 0.94], [0.45, 0.94]]
+# false_positive.mp4 为误报样例，无真实目标，无需 ROI。
+# ---------------------------------------------------------------- 检测与跟踪
+
+detector:
+  frame_skip_n: 3                    # 每 N 帧检测 1 帧，N 为帧数，取值 1-30
+  device: auto                       # auto / cpu / cuda:0 等
+  imgsz: 640                         # 推理输入尺寸
+  person:
+    weights: yolov8n.pt              # person 检测权重
+    classes: [person]                # person 类名
+    conf: 0.4                        # person 检测置信度，0-1
+  fire_smoke:
+    weights: weights/fire_smoke.pt   # 烟火权重，需使用模型实际支持的类别
+    classes: [smoke, fire]           # 烟火类别名
+  helmet:
+    weights: weights/helmet.pt       # 安全帽权重
+    helmet_classes: [helmet]         # 佩戴安全帽的类别名
+    no_helmet_classes: [no-helmet, head]  # 未佩戴安全帽的类别名
+  tracker:
+    lost_buffer_s: 2.0               # 目标丢失后保留跟踪的时长（秒，0.5-30）
+
+# ---------------------------------------------------------------- 规则
+
+rules:
+  reference_point: bottom_center     # person 参考点：bottom_center（脚点）| center
+  roi:
+    max_per_camera: 10               # 每个 Camera 的 ROI 数量上限，取值 1-10
+    min_vertices: 3                  # 多边形最少顶点数（不小于 3）
+    max_vertices: 20                 # 多边形最多顶点数（不超过 20）
+  roi_exit_grace_s: 1.0              # 离开 ROI 或短暂丢失的容忍时长（秒，0-10）
+  dwell_threshold_s: 10              # 人员滞留阈值（秒，大于 0）
+  cooldown_s: 30                     # 同一目标同类事件的冷却时间（秒，不小于 0）
+  trajectory_max_points: 100         # 单个事件记录的轨迹最大点数，2-1000
+
+  smoke_fire:
+    conf_threshold: 0.5              # 烟火检测置信度阈值，0-1
+    consecutive_frames: 3            # 烟火需连续命中的已处理帧数（不小于 1）
+    same_spot_iou_threshold: 0.3     # 相邻帧判定为同一位置的 IoU 阈值，0-1
+
+  helmet:
+    conf_threshold: 0.5              # 安全帽相关检测置信度阈值，0-1
+    no_helmet_duration_s: 5          # 连续未关联安全帽达到该时长（秒，大于 0）才报警
+    head_region_ratio: 0.25          # 头部区域占 person 框高度的比例，(0, 1]
+    assoc_overlap_metric: ioh        # 关联重叠度量：ioh（交集/安全帽面积）| iou
+    assoc_overlap_threshold: 0.5     # 关联重叠阈值，0-1
+    require_no_helmet_evidence: false  # 为 true 时还需检测到 no-helmet 框才算违规
+    min_person_height_px: 60         # 框高度小于该值的 person 不参与安全帽判定（不小于 1）
+    track_gap_reset_s: 2.0           # 目标消失超过该时长则清零计时（秒，大于 0）
+    vlm_fallback:                    # VLM 兜底路径：对头部裁剪图低频判定
+      enabled: true                  # 开关；vlm.review_enabled 为 false 时运行时自动禁用
+      interval_s: 10                 # 同一目标两次兜底检查的间隔（秒，至少 1）
+      min_confidence: 0.6            # VLM 判定未佩戴时产生事件所需的置信度，0-1
+      crop_padding_ratio: 0.2        # 头部裁剪图的外扩比例，0-1
+
+# ---------------------------------------------------------------- 证据
+
+evidence:
+  base_dir: ./data/evidence          # 证据根目录（关键帧、片段、SOP 采样帧）
+  ring_buffer_s: 20                  # 环形缓存保留秒数，需满足 design.md 跨字段校验 2 与 3 的下限
+  ring_fps: 10                       # 环形缓存最大帧率，1-30
+  ring_jpeg_quality: 90              # 缓存与关键帧的 JPEG 质量，50-100
+  clip_pre_s: 3                      # 事件前的片段时长（秒，不小于 0）
+  clip_post_s: 3                     # 事件后的片段时长（秒，不小于 0），与 clip_pre_s 合计约 6 秒
+  clip_fps: 10                       # 片段输出帧率，1-30
+
+# ---------------------------------------------------------------- VLM 复核
+
+vlm:
+  review_enabled: true               # VLM 复核开关；关闭时事件直接进入 needs_human
+  timeout_s: 20                      # 单次 VLM 调用超时（秒，大于 0），复核、兜底、SOP 共用
+  max_concurrency: 2                 # 同时进行中的 VLM 请求数，1-16
+  description_max_chars: 50          # VLM 一句话描述的长度上限（字符），1-200
+  auto_decision_threshold: 0.7       # 自动判定所需的置信度，0-1
+  image_max_side: 1280               # 送给 VLM 的图片最长边（像素），256-4096
+  image_jpeg_quality: 85             # 送给 VLM 的图片 JPEG 质量，50-100
+  # 演示提供方：mock 为离线确定性返回，不调用外部 API，不得用于真实 VLM 调用。
+  provider: mock
+  openai_compatible:
+    base_url: https://api.openai.com/v1  # 演示时不使用；真实运行见 config.yaml
+    model: your-vision-model             # 演示时不使用；真实运行见 config.yaml
+    api_key_env: VLM_API_KEY         # 存放 API Key 的环境变量名（演示时不需要设置）
+    temperature: 0                   # 采样温度，0-2
+    max_retries: 0                   # 适配层重试次数，0-3（总耗时仍受 timeout_s 约束）
+  mock:
+    default_verdict: uncertain       # 未在 by_camera 中指定时的默认结论
+    by_camera: {}                    # 按 Camera ID 指定结论，例如 {intrusion_real: true_positive}
+
+# ---------------------------------------------------------------- SOP 检查
+
+sop:
+  file: ./sops.yaml                  # SOP 定义文件
+  sample_count: 8                    # 每次检查的采样帧数，1-16
+  window_before_s: 5                 # 触发时刻之前的采样窗口（秒，不小于 0）
+  window_after_s: 5                  # 触发时刻之后的采样窗口（秒，不小于 0）
+  endpoints_inclusive: true          # 采样是否包含窗口两端点
