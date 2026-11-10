@@ -288,14 +288,14 @@
     - 覆盖合法响应、非法响应与 HTTP 错误
     - _Requirements: 5.3_
 
-- [ ] 9. MCP_Server 登记
+- [x] 9. MCP_Server 登记
   - [x] 9.1 实现 FastMCP VLM 服务
     - 先按 requirements.txt 锁定版本的官方文档核对 FastMCP（mcp Python SDK）的工具注册与 stdio 运行 API 再写代码
     - 在 chimera_patrol/mcp/vlm_server.py 中以 stdio 暴露 review_event、check_sop、check_helmet_crop 三个工具，内部复用 build_adapter(config)
     - _Requirements: 5.4, 13.4_
     - 设计参考：MCP 登记
 
-  - [ ] 9.2 登记工作区 MCP 配置
+  - [x] 9.2 登记工作区 MCP 配置
     - 创建 .kiro/settings/mcp.json，登记 chimera-vlm 服务，包括 command、args、env（引用 VLM_API_KEY）与 autoApprove 列表
     - _Requirements: 5.4, 13.4_
 
@@ -374,7 +374,7 @@
     - 验证两路事件进入同一复核流程
     - _Requirements: 3.7, 3.8_
 
-- [ ] 12. Checkpoint - M2 完成
+- [x] 12. Checkpoint - M2 完成
   - Ensure all tests pass, ask the user if questions arise.
 
 ### M3（第 3 周）：API、统计、SOP、前端、演示与收尾
