@@ -459,7 +459,10 @@ class VLMVerdict:
 | 方法 | 路径 | 参数 | 响应 |
 |---|---|---|---|
 | GET | `/api/health` | 无 | `{ "status": "ok", "vlm_review_enabled": true, "version": "..." }` |
-| GET | `/api/cameras` | 无 | `{ "items": [CameraDTO] }` |
+| GET | `/api/cameras` | 无 | `{ "items": [CameraDTO] }`（每路含 `paused`） |
+| POST | `/api/cameras/{camera_id}/pause` | 无 | `{ "camera_id", "paused": true }`；Camera 不存在 404。只停止检测与报警，视频流与在途 VLM 复核不受影响；状态只存内存，进程重启后全部为运行 |
+| POST | `/api/cameras/{camera_id}/resume` | 无 | `{ "camera_id", "paused": false }`；Camera 不存在 404。恢复后下一帧前清空该路跟踪与规则状态 |
+| GET | `/api/config/effective` | 无 | 当前生效配置的只读视图：每路摄像头的检测阈值、ROI、冷却时间，规则全局参数，VLM 的提供方、模型、接口地址、超时与复核开关。API Key 只返回 `api_key.configured`（是否已设置）与环境变量名，绝不返回取值 |
 | GET | `/api/cameras/{camera_id}/stream.mjpg` | query：`overlay`(bool，默认 true，叠加检测框与 ROI)、`fps`(1~30，默认 `video.mjpeg.fps`) | `multipart/x-mixed-replace; boundary=frame`；Camera 不存在 404 |
 | GET | `/api/events` | query：`camera_id`、`event_type`、`status`（三者均支持逗号分隔多值）、`from_ms`、`to_ms`、`limit`(1~200，默认 50)、`offset`(≥0，默认 0) | `{ "items": [EventDTO], "total": 123, "limit": 50, "offset": 0 }`，按 `created_ms DESC, id DESC` |
 | GET | `/api/events/{event_id}` | 无 | EventDTO（含 `trajectory`、`status_log`）；404 |
@@ -478,7 +481,7 @@ class VLMVerdict:
 ```json
 {
   "id": "intrusion_real", "name": "东门通道",
-  "source_type": "file", "status": "online", "status_changed_ms": 1790000000000,
+  "source_type": "file", "status": "online", "status_changed_ms": 1790000000000, "paused": false,
   "stream_url": "/api/cameras/intrusion_real/stream.mjpg",
   "rois": [{ "id": "gate_zone", "type": "intrusion", "name": "东门禁入区", "polygon": [[0.1,0.2],[0.8,0.2],[0.8,0.9],[0.1,0.9]] }],
   "latest_event": { "id": "evt_...", "event_type": "intrusion", "status": "confirmed", "created_ms": 1790000000100 },

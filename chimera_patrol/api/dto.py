@@ -169,8 +169,12 @@ def camera_dto(
     latest_event: Mapping[str, Any] | None,
     total: int,
     pending_human: int,
+    paused: bool = False,
 ) -> dict[str, Any]:
-    """CameraDTO（design HTTP API 一节）。不含 source，避免泄露 RTSP 凭据。"""
+    """CameraDTO（design HTTP API 一节）。不含 source，避免泄露 RTSP 凭据。
+
+    ``paused`` 表示本路检测已暂停（内存状态）。暂停不影响视频流，``status`` 仍反映采集状态。
+    """
     camera_id = camera["id"]
     return {
         "id": camera_id,
@@ -178,6 +182,7 @@ def camera_dto(
         "source_type": camera["source_type"],
         "status": camera["status"],
         "status_changed_ms": camera["status_changed_ms"],
+        "paused": paused,
         "stream_url": f"/api/cameras/{camera_id}/stream.mjpg",
         "rois": [
             {
@@ -205,8 +210,10 @@ def camera_dto(
 def load_camera_dtos(
     repo: EventRepository,
     rois_by_camera: Mapping[str, Sequence[RoiConfig]],
+    paused: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """读取全部 Camera 并附加最近事件与计数。"""
+    """读取全部 Camera 并附加最近事件、计数与暂停状态。"""
+    paused = paused or set()
     items: list[dict[str, Any]] = []
     for camera in repo.list_cameras():
         camera_id = camera["id"]
@@ -228,6 +235,7 @@ def load_camera_dtos(
                 latest_event=latest[0] if latest else None,
                 total=int(counts["total"]),
                 pending_human=int(counts["pending_human"]),
+                paused=camera_id in paused,
             )
         )
     return items

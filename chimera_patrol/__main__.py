@@ -98,6 +98,7 @@ def run(argv: list[str] | None = None) -> int:
             detector,
             asyncio.get_running_loop(),
             notifier=notifier,
+            control=ctx.control,
         )
         runtime.start()
         ctx.cameras = list(runtime.cameras)

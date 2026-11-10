@@ -9,7 +9,6 @@ export function connectWs({ onMessage, onStatus, onResync }) {
   let socket = null;
   let delay = MIN_DELAY_MS;
   let pingTimer = null;
-  let hasConnectedBefore = false;
 
   function url() {
     const scheme = location.protocol === "https:" ? "wss:" : "ws:";
@@ -23,8 +22,9 @@ export function connectWs({ onMessage, onStatus, onResync }) {
     socket.onopen = () => {
       delay = MIN_DELAY_MS;
       onStatus("online");
-      if (hasConnectedBefore && onResync) onResync();
-      hasConnectedBefore = true;
+      // 每次建立连接都重新对账：首次加载时摄像头可能尚未上线，之后的状态变化只能通过 WebSocket 得知，
+      // 因此首次连接也要拉取一次快照，不能只在重连时同步。
+      if (onResync) onResync();
       pingTimer = setInterval(() => {
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ type: "ping" }));

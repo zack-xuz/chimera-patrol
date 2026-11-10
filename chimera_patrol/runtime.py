@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import os
 import threading
@@ -39,6 +40,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from chimera_patrol.config import AppConfig
+from chimera_patrol.control import CameraControl
 from chimera_patrol.detect.tracker import PersonTracker
 from chimera_patrol.detect.worker import DetectWorker
 from chimera_patrol.evidence.ring_buffer import RingBuffer
@@ -113,8 +115,10 @@ class PatrolRuntime:
         capture_factory: Callable[[str], Any] | None = None,
         adapter: VLMAdapter | None = None,
         notifier: EventNotifier | None = None,
+        control: CameraControl | None = None,
     ) -> None:
         self._config = config
+        self._control = control if control is not None else CameraControl()
         self._repo = repository
         self._sop_repo = SopRepository(repository)
         self._detector = detector
@@ -139,6 +143,11 @@ class PatrolRuntime:
     @property
     def cameras(self) -> Sequence[Camera]:
         return tuple(self._cameras)
+
+    @property
+    def control(self) -> CameraControl:
+        """每路检测的暂停登记表（内存，不落库）。"""
+        return self._control
 
     @property
     def frame_slots(self) -> dict[str, FrameSlot]:
@@ -266,6 +275,7 @@ class PatrolRuntime:
                 max_pending_fallback=cfg.vlm.max_concurrency,
                 fallback_jpeg_quality=cfg.vlm.image_jpeg_quality,
                 frame_slot=self._frame_slots[cam.id],
+                pause_check=functools.partial(self._control.is_paused, cam.id),
             )
             kwargs: dict[str, Any] = {}
             if self._capture_factory is not None:

@@ -89,10 +89,12 @@ class DetectWorker(threading.Thread):
         max_pending_fallback: int = 1,
         fallback_jpeg_quality: int = 85,
         frame_slot: Any = None,
+        pause_check: Callable[[], bool] | None = None,
     ) -> None:
         """
         Args:
             frame_slot: 可选的 FrameSlot。每处理一帧后把检测框写入其 ``overlay``，供 MJPEG 叠加显示。
+            pause_check: 返回 True 表示本路检测已暂停。暂停期间丢弃检测帧。
             fallback_submit: 安全帽 VLM 兜底的投递函数。为 None 时不做兜底（开关关闭或复核关闭）。
             max_pending_fallback: 本路同时在途的兜底请求上限，取自 vlm.max_concurrency。
                 达到上限时跳过新的兜底请求，该 track 的请求在间隔后再次尝试。
@@ -112,6 +114,8 @@ class DetectWorker(threading.Thread):
         self._max_pending_fallback = max_pending_fallback
         self._fallback_jpeg_quality = fallback_jpeg_quality
         self._frame_slot = frame_slot
+        self._pause_check = pause_check
+        self._paused = False
         self._pending: list[_PendingFallback] = []
         self._engine: RuleEngine | None = None
         self._reset_requested = threading.Event()
@@ -143,6 +147,17 @@ class DetectWorker(threading.Thread):
             self._cancel_pending()
 
     def _handle(self, item: DetectItem) -> None:
+        if self._pause_check is not None and self._pause_check():
+            # 暂停：丢弃检测帧，不产生候选事件；清空叠加框，避免显示过期的检测结果。
+            self._paused = True
+            if self._frame_slot is not None:
+                self._frame_slot.overlay = []
+            return
+        if self._paused:
+            # 恢复：下一帧前清空跟踪器与规则状态，暂停前后的轨迹与计时不串联。
+            self._paused = False
+            self._reset_requested.set()
+
         if self._reset_requested.is_set():
             self._reset_requested.clear()
             self._tracker.reset()

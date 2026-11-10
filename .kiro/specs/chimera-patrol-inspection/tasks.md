@@ -580,6 +580,19 @@
 - [x] 20. Final Checkpoint - 全部测试通过
   - Ensure all tests pass, ask the user if questions arise.
 
+### M3 收官后补强
+
+- [x] 21. 每路摄像头暂停与恢复检测
+  - [x] 21.1 内存暂停登记表 `CameraControl`（不落库），检测线程暂停时丢弃检测帧、清空叠加框，恢复时清空跟踪与规则状态
+  - [x] 21.2 `POST /api/cameras/{camera_id}/pause` 与 `/resume`，`GET /api/cameras` 每路返回 `paused`
+  - [x] 21.3 前端视频墙：暂停/恢复按钮，画面叠加“检测已暂停”提示，视频流不中断
+  - [x] 21.4 集成测试：暂停后该路不再产生新事件、另一路照常、恢复后继续产生；在途 VLM 复核不取消
+- [x] 22. 只读配置展示
+  - [x] 22.1 `GET /api/config/effective`：摄像头阈值、ROI、冷却，规则全局参数，VLM 提供方、模型、超时、复核开关
+  - [x] 22.2 API Key 脱敏：只返回 `api_key.configured` 与环境变量名，测试断言响应中不含密钥取值
+  - [x] 22.3 前端只读配置区（主页），无保存与修改入口
+- [x] 23. 修复首次加载后摄像头显示离线的问题：WebSocket 每次连接建立后都重新对账，不再只在重连时对账
+
 ## Notes
 
 - 标记 `*` 的子任务为可选测试任务，可在快速 MVP 中跳过；核心实现子任务不可跳过。

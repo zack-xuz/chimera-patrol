@@ -1,4 +1,5 @@
 // 视频墙：每路 Camera 一张卡片，画面为 MJPEG 流，显示在线状态与最近事件角标（需求 7.1、7.2、1.2）。
+import { api } from "/static/js/api.js";
 import { EVENT_TYPE_LABELS, STATUS_LABELS, el, formatTime } from "/static/js/labels.js";
 
 const cards = new Map();
@@ -24,10 +25,35 @@ function setStatus(card, status) {
   }
 }
 
+function setPaused(card, paused) {
+  card.paused = paused;
+  card.pausedBadge.hidden = !paused;
+  card.toggleButton.textContent = paused ? "恢复检测" : "暂停检测";
+  card.toggleButton.setAttribute("aria-pressed", paused ? "true" : "false");
+}
+
 function createCard(camera) {
   const img = el("img", { alt: `${camera.name} 实时画面`, class: "stream" });
   const overlayText = el("div", { class: "stream-off" }, "画面离线，等待重连");
   overlayText.hidden = true;
+  // 检测暂停只影响报警，视频流继续播放，这里只在画面上叠加提示。
+  const pausedBadge = el("div", { class: "paused-badge" }, "检测已暂停");
+  pausedBadge.hidden = true;
+  const toggleButton = el("button", { type: "button", class: "toggle-detect" }, "暂停检测");
+  toggleButton.addEventListener("click", async () => {
+    const card = cards.get(camera.id);
+    if (!card) return;
+    toggleButton.disabled = true;
+    try {
+      const action = card.paused ? api.resumeCamera : api.pauseCamera;
+      const result = await action(camera.id);
+      setPaused(card, result.paused);
+    } catch (err) {
+      card.latestBadge.textContent = `操作失败：${err.message}`;
+    } finally {
+      toggleButton.disabled = false;
+    }
+  });
   img.addEventListener("error", () => {
     if (cards.get(camera.id)?.statusBadge.textContent === "在线") {
       overlayText.textContent = "画面读取失败";
@@ -40,8 +66,8 @@ function createCard(camera) {
     "article",
     { class: "cam-card", "data-camera-id": camera.id },
     el("header", { class: "cam-head" }, el("strong", {}, camera.name), statusBadge),
-    el("div", { class: "stream-box" }, img, overlayText),
-    el("footer", { class: "cam-foot" }, latestBadge)
+    el("div", { class: "stream-box" }, img, overlayText, pausedBadge),
+    el("footer", { class: "cam-foot" }, latestBadge, toggleButton)
   );
   const card = {
     root,
@@ -49,6 +75,9 @@ function createCard(camera) {
     overlayText,
     statusBadge,
     latestBadge,
+    pausedBadge,
+    toggleButton,
+    paused: false,
     streamUrl: `${camera.stream_url}?overlay=1`,
   };
   return card;
@@ -66,6 +95,7 @@ export function renderWall(container, cameras) {
     }
     card.latestBadge.textContent = badgeText(camera.latest_event);
     setStatus(card, camera.status);
+    setPaused(card, Boolean(camera.paused));
   }
   for (const [id, card] of cards) {
     if (!seen.has(id)) {

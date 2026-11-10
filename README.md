@@ -112,6 +112,14 @@ python -m chimera_patrol --demo
 
 ROI 为归一化坐标（0~1），只在配置中设置，巡检台只读显示。
 
+## 检测暂停与配置展示
+
+- 每路摄像头可以在视频墙上点击「暂停检测」。暂停只停止检测与报警，视频流继续播放，画面上显示“检测已暂停”。在途的 VLM 复核照常完成。恢复后，该路从干净状态重新开始检测。
+- 暂停状态只存在内存中，不落库。进程重启后所有摄像头默认为运行状态。
+- 接口：`POST /api/cameras/{camera_id}/pause`、`POST /api/cameras/{camera_id}/resume`；`GET /api/cameras` 每路包含 `paused`。
+- 首页的“当前生效配置”为只读展示，包括每路的检测阈值、ROI、冷却时间，规则全局参数，以及 VLM 的提供方、模型、超时和复核开关。修改配置需编辑 `config.yaml` 并重启。
+- 配置接口 `GET /api/config/effective` 对 API Key 脱敏：只返回“是否已设置”，不返回取值。
+
 ## 测试
 
 ```bash

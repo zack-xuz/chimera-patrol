@@ -47,6 +47,9 @@ async function postJSON(path, payload) {
 export const api = {
   health: () => getJSON("/api/health"),
   cameras: () => getJSON("/api/cameras"),
+  pauseCamera: (id) => postJSON(`/api/cameras/${encodeURIComponent(id)}/pause`, {}),
+  resumeCamera: (id) => postJSON(`/api/cameras/${encodeURIComponent(id)}/resume`, {}),
+  effectiveConfig: () => getJSON("/api/config/effective"),
   events: (params) => getJSON("/api/events", params),
   event: (id) => getJSON(`/api/events/${encodeURIComponent(id)}`),
   changeStatus: (id, payload) => postJSON(`/api/events/${encodeURIComponent(id)}/status`, payload),

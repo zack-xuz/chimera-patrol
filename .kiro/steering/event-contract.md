@@ -215,7 +215,7 @@ VLM 视图徽标取值：`未复核`、`true_positive`、`false_positive`、`unc
 
 ### 6.4 客户端行为
 
-- 断线重连后，客户端不依赖补发。应重新调用 `GET /api/events` 与 `GET /api/cameras` 对账。
+- 每次 WebSocket 连接建立后（含首次加载），客户端都应重新调用 `GET /api/events` 与 `GET /api/cameras` 对账。服务端不补发连接建立前的消息，首次加载时摄像头可能尚未上线。
 - 客户端按 `id` 做 upsert。重复消息无副作用。
 
 ## 7. 错误格式
@@ -248,6 +248,8 @@ VLM 视图徽标取值：`未复核`、`true_positive`、`false_positive`、`unc
 - ID 格式：事件 `evt_` + 12 位十六进制；SOP 运行 `sop_` + 12 位十六进制。
 - 改判接口：`POST /api/events/{event_id}/status`，请求体 `{ "to_status", "operator", "reason" }`（`reason` 可选，≤ 200 字符）。
 - SOP 触发：`POST /api/sop/runs` 成功返回 202 与 `running` 状态的 SopRunDTO。
+- 摄像头暂停：`POST /api/cameras/{camera_id}/pause` 与 `/resume`；`GET /api/cameras` 每路含布尔字段 `paused`（内存状态，进程重启后为 `false`）。暂停只停止检测与报警，不改变 `camera.status`，视频流不受影响。
+- 只读配置：`GET /api/config/effective`。API Key 只返回 `vlm.api_key.configured`（布尔）与环境变量名，绝不返回取值。
 
 ## 9. SQLite 表名
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -23,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from chimera_patrol.api.config_view import effective_config_view
 from chimera_patrol.api.context import ApiNotifier, AppContext, cameras_snapshot
 from chimera_patrol.api.dto import list_event_dtos, load_event_dto, sop_run_dto
 from chimera_patrol.api.export import export_csv, export_json
@@ -166,6 +168,30 @@ def create_app(
     @app.get("/api/cameras")
     async def list_cameras() -> dict[str, Any]:
         return {"items": await cameras_snapshot(ctx)}
+
+    def _require_camera(camera_id: str) -> None:
+        if camera_id not in ctx.frame_slots:
+            raise ApiError(404, "not_found", f"camera {camera_id} not found")
+
+    @app.post("/api/cameras/{camera_id}/pause")
+    async def pause_camera(camera_id: str) -> dict[str, Any]:
+        """暂停本路检测与报警。视频流与在途的 VLM 复核不受影响。状态只存内存。"""
+        _require_camera(camera_id)
+        ctx.control.pause(camera_id)
+        _log.info("detection paused camera=%s", camera_id)
+        return {"camera_id": camera_id, "paused": True}
+
+    @app.post("/api/cameras/{camera_id}/resume")
+    async def resume_camera(camera_id: str) -> dict[str, Any]:
+        _require_camera(camera_id)
+        ctx.control.resume(camera_id)
+        _log.info("detection resumed camera=%s", camera_id)
+        return {"camera_id": camera_id, "paused": False}
+
+    @app.get("/api/config/effective")
+    async def effective_config() -> dict[str, Any]:
+        """当前生效配置的只读视图。API Key 只返回是否已设置，不返回取值。"""
+        return effective_config_view(ctx.config, ctx.cameras, ctx.control.snapshot(), os.environ)
 
     @app.get("/api/cameras/{camera_id}/stream.mjpg")
     async def stream(

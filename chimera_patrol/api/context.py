@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 from chimera_patrol.api.dto import load_camera_dtos, load_event_dto, sop_run_dto
 from chimera_patrol.api.ws import WsHub
 from chimera_patrol.config import AppConfig, RoiConfig
+from chimera_patrol.control import CameraControl
 from chimera_patrol.ingest.camera import Camera
 from chimera_patrol.ingest.capture import FrameSlot
 from chimera_patrol.review.state_machine import EventStateMachine
@@ -40,6 +41,7 @@ class AppContext:
     cameras: list[Camera] = field(default_factory=list)
     frame_slots: dict[str, FrameSlot] = field(default_factory=dict)
     sop: SopChecker | None = None
+    control: CameraControl = field(default_factory=CameraControl)
 
     def __post_init__(self) -> None:
         self.state = EventStateMachine(self.repo)
@@ -101,6 +103,7 @@ class ApiNotifier:
 
 
 async def cameras_snapshot(ctx: AppContext) -> list[dict[str, Any]]:
-    """在线程中读取 CameraDTO 列表。"""
+    """在线程中读取 CameraDTO 列表（含每路的 paused 状态）。"""
     rois = ctx.camera_rois()
-    return await asyncio.to_thread(load_camera_dtos, ctx.repo, rois)
+    paused = ctx.control.snapshot()
+    return await asyncio.to_thread(load_camera_dtos, ctx.repo, rois, paused)

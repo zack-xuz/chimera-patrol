@@ -5,6 +5,7 @@ import { fillStatusFilter, fillTypeFilter, initEventFilters, loadEvents, setFilt
 import { bindStatsPanel, fillStatsCameras, refreshStats } from "/static/js/stats.js";
 import { initSopPanel, onSopRunUpdated, refreshRuns } from "/static/js/sop.js";
 import { renderWall, updateCameraStatus, updateLatestEvent } from "/static/js/wall.js";
+import { initConfigPanel } from "/static/js/config.js";
 
 const connState = document.querySelector("#ws-state");
 
@@ -61,6 +62,7 @@ async function main() {
   await loadEvents();
   await refreshStats();
   await initSopPanel(cameras);
+  await initConfigPanel();
 
   connectWs({ onMessage: handleMessage, onStatus: setConnState, onResync: () => resync().catch(() => {}) });
 }
