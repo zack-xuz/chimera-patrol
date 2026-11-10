@@ -13,8 +13,8 @@ function badgeText(latest) {
 
 function setStatus(card, status) {
   card.root.classList.toggle("is-offline", status !== "online");
-  card.statusBadge.textContent = status === "online" ? "在线" : "离线";
-  card.statusBadge.className = `badge ${status === "online" ? "ok" : "bad"}`;
+  card.statusBadge.textContent = status === "online" ? "LIVE" : "离线";
+  card.statusBadge.className = status === "online" ? "badge live" : "badge bad";
   if (status !== "online") {
     card.img.removeAttribute("src");
     card.overlayText.textContent = "画面离线，等待重连";
@@ -104,7 +104,7 @@ export function renderWall(container, cameras) {
     }
   }
   if (cameras.length === 0) {
-    container.replaceChildren(el("p", { class: "muted" }, "尚未接入任何视频源"));
+    container.replaceChildren(el("p", { class: "empty" }, "尚未接入任何视频源。在 config.yaml 或视频目录中添加视频后重启服务。"));
   }
 }
 

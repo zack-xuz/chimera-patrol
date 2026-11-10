@@ -22,7 +22,7 @@ function renderRuns(items) {
   const list = document.querySelector("#sop-runs");
   if (!list) return;
   if (items.length === 0) {
-    list.replaceChildren(el("li", { class: "muted" }, "暂无检查记录"));
+    list.replaceChildren(el("li", { class: "empty" }, "暂无检查记录。选择 SOP 与摄像头后点击「触发检查」。"));
     return;
   }
   list.replaceChildren(
@@ -50,7 +50,7 @@ function renderDetail(run) {
   const box = document.querySelector("#sop-detail");
   if (!box) return;
   if (!run) {
-    box.replaceChildren(el("p", { class: "muted" }, "选择一条检查记录查看结果"));
+    box.replaceChildren(el("p", { class: "empty" }, "选择一条检查记录查看逐步骤结果"));
     return;
   }
   const header = el(

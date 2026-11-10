@@ -4,12 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chimera Patrol 巡检台</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B0F14'/%3E%3Cpath d='M16 7 24 11.5v9L16 25 8 20.5v-9z' fill='none' stroke='%23E6EDF3' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='%23E6EDF3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
   <header class="topbar">
-    <h1>Chimera Patrol 巡检台</h1>
-    <span id="ws-state" class="badge muted">连接中</span>
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M16 3.5 27 9.8v12.4L16 28.5 5 22.2V9.8z" fill="none" stroke="#B6C2CF" stroke-width="1.8" stroke-linejoin="round"/>
+        <circle cx="16" cy="16" r="4" fill="#E6EDF3"/>
+        <path d="M16 9.5v3M16 19.5v3M9.5 16h3M19.5 16h3" stroke="#7D8A99" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <h1>Chimera Patrol</h1>
+      <span class="sub">多路视频智能巡检</span>
+    </div>
+    <div class="topbar-right">
+      <span id="topbar-events" class="counter">事件 <b>—</b></span>
+      <span id="clock" class="clock">--:--:--</span>
+      <span id="ws-state" class="badge muted">连接中</span>
+    </div>
   </header>
 
   <main class="layout">
@@ -19,7 +32,7 @@
     </section>
 
     <section class="panel events-panel">
-      <h2>实时事件 <small id="event-count" class="muted"></small></h2>
+      <h2>实时事件 <small id="event-count"></small></h2>
       <div class="filters">
         <select id="filter-camera" aria-label="按摄像头筛选"></select>
         <select id="filter-type" aria-label="按类型筛选"></select>
@@ -42,25 +55,27 @@
       <div id="stats-buckets" class="buckets"></div>
     </section>
 
-    <section class="panel config-panel" id="config-panel">
-      <h2>当前生效配置 <small class="muted">（只读）</small></h2>
-      <div id="config-body"><p class="muted">加载中…</p></div>
-    </section>
+    <div class="lower">
+      <section class="panel config-panel" id="config-panel">
+        <h2>当前生效配置 <small>只读</small></h2>
+        <div id="config-body"><p class="muted">加载中…</p></div>
+      </section>
 
-    <section class="panel sop-panel" id="sop-panel">
-      <h2>SOP 合规检查</h2>
-      <div class="toolbar">
-        <select id="sop-select" aria-label="选择 SOP"></select>
-        <select id="sop-camera" aria-label="选择摄像头"></select>
-        <input id="sop-operator" type="text" maxlength="32" value="巡检员" aria-label="操作人">
-        <button type="button" id="sop-trigger">触发检查</button>
-      </div>
-      <p id="sop-error" class="error" hidden></p>
-      <div class="sop-body">
-        <ul id="sop-runs" class="run-list"></ul>
-        <div id="sop-detail" class="sop-detail"></div>
-      </div>
-    </section>
+      <section class="panel sop-panel" id="sop-panel">
+        <h2>SOP 合规检查</h2>
+        <div class="toolbar">
+          <select id="sop-select" aria-label="选择 SOP"></select>
+          <select id="sop-camera" aria-label="选择摄像头"></select>
+          <input id="sop-operator" type="text" maxlength="32" value="巡检员" aria-label="操作人">
+          <button type="button" id="sop-trigger">触发检查</button>
+        </div>
+        <p id="sop-error" class="error" hidden></p>
+        <div class="sop-body">
+          <ul id="sop-runs" class="run-list"></ul>
+          <div id="sop-detail" class="sop-detail"></div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script type="module" src="/static/js/index.js"></script>

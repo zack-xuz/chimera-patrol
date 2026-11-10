@@ -44,16 +44,30 @@ function renderItem(event) {
   );
   const vlm = vlmBadge(event.vlm);
   const vlmEl = el("span", { class: `badge ${vlm.kind}` }, `VLM：${vlm.text}`);
-  const status = el("span", { class: "badge" }, STATUS_LABELS[event.status] || event.status);
+  // 状态徽章使用语义色类名（st-*），与强调色无关。
+  const status = el("span", { class: `badge st-${event.status}` }, STATUS_LABELS[event.status] || event.status);
+  const thumbUrl = event.evidence && event.evidence.keyframe_annotated_url;
+  const thumb = thumbUrl
+    ? el("img", { class: "event-thumb", src: thumbUrl, alt: "", loading: "lazy" })
+    : el("span", { class: "event-thumb" });
   return el(
     "li",
     { class: "event-row", "data-event-id": event.id },
     el(
       "a",
       { href: `/static/event.html?id=${encodeURIComponent(event.id)}`, class: "event-link" },
-      el("span", { class: "event-time" }, formatTime(event.created_ms)),
-      el("span", { class: "event-cam" }, event.camera_name),
-      el("span", { class: "event-badges" }, cv, vlmEl, status)
+      thumb,
+      el(
+        "span",
+        { class: "event-main" },
+        el(
+          "span",
+          { class: "event-top" },
+          el("span", { class: "event-cam" }, event.camera_name),
+          el("span", { class: "event-time" }, formatTime(event.created_ms))
+        ),
+        el("span", { class: "event-badges" }, cv, vlmEl, status)
+      )
     )
   );
 }
@@ -63,7 +77,7 @@ export function renderEvents() {
   if (!list) return;
   const rows = sorted().filter(matches).map(renderItem);
   if (rows.length === 0) {
-    list.replaceChildren(el("li", { class: "muted" }, "暂无符合条件的事件"));
+    list.replaceChildren(el("li", { class: "empty" }, "暂无符合条件的事件。调整筛选条件，或等待新的报警。"));
   } else {
     list.replaceChildren(...rows);
   }

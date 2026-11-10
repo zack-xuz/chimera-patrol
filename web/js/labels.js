@@ -67,7 +67,8 @@ export function vlmBadge(vlm) {
   if (vlm.skipped) return { text: "复核关闭", kind: "muted" };
   if (vlm.error) return { text: `复核失败：${VLM_ERROR_LABELS[vlm.error] || vlm.error}`, kind: "bad" };
   const label = VERDICT_LABELS[vlm.verdict] || vlm.verdict;
-  const kind = vlm.verdict === "false_positive" ? "ok" : vlm.verdict === "true_positive" ? "warn" : "muted";
+  // 误报为绿（拦截），真实事件为红（与已确认一致），不确定为黄（待人工）。
+  const kind = vlm.verdict === "false_positive" ? "ok" : vlm.verdict === "true_positive" ? "confirm" : "warn";
   return { text: `${label}`, kind };
 }
 

@@ -3,10 +3,10 @@
 import { api } from "/static/js/api.js";
 import { EVENT_TYPE_LABELS, el, formatRate } from "/static/js/labels.js";
 
-function card(label, value, hint) {
+function card(label, value, hint, variant) {
   return el(
     "div",
-    { class: "stat-card" },
+    { class: variant ? `stat-card ${variant}` : "stat-card" },
     el("span", { class: "stat-label" }, label),
     el("strong", { class: "stat-value" }, value),
     hint ? el("span", { class: "stat-hint" }, hint) : null
@@ -36,7 +36,7 @@ function bucketTable(title, rows, keyLabel, keyText) {
       el("td", {}, formatRate(row.false_positive_reduction_rate))
     )
   );
-  if (body.length === 0) body.push(el("tr", {}, el("td", { colspan: 6, class: "muted" }, "暂无数据")));
+  if (body.length === 0) body.push(el("tr", {}, el("td", { colspan: 6, class: "empty" }, "暂无数据")));
   return el("section", { class: "bucket" }, el("h3", {}, title), el("table", {}, el("thead", {}, head), el("tbody", {}, ...body)));
 }
 
@@ -54,12 +54,13 @@ export async function refreshStats() {
   const params = currentStatsParams();
   const data = await api.stats(params);
   const t = data.totals;
+  // 误报下降率为主视觉（大号橙色数字），其余数字卡片层级次之。
   panel.querySelector("#stats-cards").replaceChildren(
+    card("误报下降率", formatRate(t.false_positive_reduction_rate), "拦截数 ÷ CV 总报警数", "hero"),
     card("CV 总报警数", String(t.total_alarms)),
     card("VLM 拦截（误报）", String(t.dismissed)),
     card("确认事件", String(t.confirmed)),
-    card("待人工", String(t.pending_human), `待人工 ${t.needs_human} + 复核失败 ${t.review_failed}`),
-    card("误报下降率", formatRate(t.false_positive_reduction_rate), "拦截数 ÷ 总报警数")
+    card("待人工", String(t.pending_human), `待人工 ${t.needs_human} + 复核失败 ${t.review_failed}`)
   );
   panel.querySelector("#stats-buckets").replaceChildren(
     bucketTable("按摄像头", data.by_camera, "摄像头", (row) => row.camera_id),
