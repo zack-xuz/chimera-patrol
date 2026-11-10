@@ -1,0 +1,160 @@
+/* Chimera Patrol 巡检台样式。原生 CSS，无构建步骤。 */
+
+:root {
+  --bg: #0f1419;
+  --panel: #161d24;
+  --line: #2a3541;
+  --text: #e6edf3;
+  --muted: #8b98a5;
+  --ok: #2ea043;
+  --warn: #d29922;
+  --bad: #f85149;
+  --accent: #58a6ff;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1 { font-size: 18px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+h3 { font-size: 14px; margin: 12px 0 6px; }
+small { font-weight: normal; }
+button, select, input {
+  font: inherit;
+  color: var(--text);
+  background: #0c1116;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+button { cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+pre.json { background: #0c1116; padding: 8px; border-radius: 6px; overflow: auto; font-size: 12px; max-height: 260px; }
+
+.muted { color: var(--muted); }
+.error, .bad { color: var(--bad); }
+.ok { color: var(--ok); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  margin-left: 4px;
+}
+.badge.ok { border-color: var(--ok); color: var(--ok); }
+.badge.warn { border-color: var(--warn); color: var(--warn); }
+.badge.bad { border-color: var(--bad); color: var(--bad); }
+.badge.muted { color: var(--muted); }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.topbar a { color: var(--text); }
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 0;
+}
+.wall-panel { grid-row: span 2; }
+.stats-panel, .sop-panel { grid-column: 1 / -1; }
+
+.wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.cam-card {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0c1116;
+}
+.cam-card.is-offline { opacity: 0.7; }
+.cam-head, .cam-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.stream-box { position: relative; aspect-ratio: 16 / 9; background: #000; }
+.stream { width: 100%; height: 100%; object-fit: contain; display: block; }
+.stream-off {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); background: rgba(0, 0, 0, 0.6); font-size: 13px;
+}
+.latest { font-size: 12px; color: var(--muted); }
+
+.filters, .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.toolbar label { font-size: 13px; }
+
+.event-list, .run-list { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow: auto; }
+.event-row { border-bottom: 1px solid var(--line); }
+.event-link { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 4px; color: var(--text); }
+.event-link:hover { background: #1b2530; text-decoration: none; }
+.event-time { color: var(--muted); font-size: 12px; min-width: 150px; }
+.event-cam { font-weight: 600; }
+.event-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.stat-card { border: 1px solid var(--line); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.stat-label { color: var(--muted); font-size: 12px; }
+.stat-value { font-size: 22px; }
+.stat-hint { color: var(--muted); font-size: 11px; }
+.buckets { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+
+.sop-body { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 12px; }
+.run-row { display: flex; gap: 8px; align-items: center; padding: 6px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 13px; }
+.run-row:hover, .run-row.is-selected { background: #1b2530; }
+.sop-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.sop-failed { border: 1px solid var(--bad); border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+.sop-steps { list-style: none; padding: 0; margin: 0; }
+.step { display: grid; grid-template-columns: 16px 1fr auto; gap: 4px 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.step-evidence { grid-column: 2 / -1; margin: 0; font-size: 12px; color: var(--muted); }
+.lamp { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.lamp-pass { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.lamp-fail { background: var(--bad); box-shadow: 0 0 6px var(--bad); }
+.lamp-unknown { background: #6e7681; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+.detail-col { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+.detail-col figure { margin: 0 0 8px; }
+.detail-col img, .detail-col video { width: 100%; border-radius: 6px; background: #000; }
+.kv { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; }
+.kv-label { color: var(--muted); }
+.override { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.override label { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.log th, .log td { font-size: 12px; }
+
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
+  .wall-panel { grid-row: auto; }
+  .detail-grid { grid-template-columns: 1fr 1fr; }
+  .sop-body { grid-template-columns: 1fr; }
+}

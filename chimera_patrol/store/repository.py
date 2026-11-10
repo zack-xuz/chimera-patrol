@@ -10,6 +10,8 @@ import json
 import sqlite3
 import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterable, Sequence
@@ -427,6 +429,39 @@ class EventRepository:
                 (status, now_ms, camera_id),
             )
             return cursor.rowcount > 0
+    def list_cameras(self) -> list[dict[str, Any]]:
+        """返回全部 Camera 行，按 id 排序。"""
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM cameras ORDER BY id").fetchall()
+        return [dict(row) for row in rows]
+
+    def get_camera(self, camera_id: str) -> dict[str, Any] | None:
+        """按 ID 读取 Camera 行，不存在时返回 None。"""
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM cameras WHERE id = ?", (camera_id,)).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_status_log(self, event_id: str) -> list[dict[str, Any]]:
+        """返回事件的全部状态日志，按写入顺序（id 升序）排列。"""
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT from_status, to_status, actor_type, actor, reason, created_ms
+                FROM event_status_log WHERE event_id = ? ORDER BY id
+                """,
+                (event_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    @contextmanager
+    def transaction(self) -> Iterator[sqlite3.Connection]:
+        """持锁开启一个事务，供同包内的仓储（如 SOP 仓储）执行写入。
+
+        正常退出时提交，抛出异常时回滚。调用方不得在事务内调用本类的其他方法（会死锁）。
+        """
+        with self._lock, self._conn:
+            yield self._conn
+
     def read_rows(self, sql: str, params: Sequence[Any] = ()) -> list[dict[str, Any]]:
         """在持锁状态下执行只读查询并返回字典列表。
 

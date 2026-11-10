@@ -15,6 +15,7 @@ SOP 检查的恢复（running 置为 check_failed_retry）不在本模块内，�
 from __future__ import annotations
 
 import logging
+import time
 from typing import Final
 
 from chimera_patrol.review.state_machine import (
@@ -24,6 +25,7 @@ from chimera_patrol.review.state_machine import (
     InvalidTransition,
 )
 from chimera_patrol.store.repository import LIST_LIMIT_MAX, EventRepository
+from chimera_patrol.store.sop_repo import SopRepository
 
 RECOVERY_ACTOR: Final = "startup_recovery"
 RECOVERY_REASON: Final = "service_restart"
@@ -84,3 +86,16 @@ def recover_pending_reviews(
             continue
         recovered += 1
     return recovered
+
+
+def recover_running_sop_runs(sop_repo: SopRepository, now_ms: int | None = None) -> int:
+    """启动恢复（15.7）：把遗留的 running SOP 检查置为 check_failed_retry，原因 service_restart。
+
+    内存中的检查任务已随进程结束，数据库中的 running 记录无人处理。
+    置为 check_failed_retry 后，Inspector 可以通过 retry_of 重新触发。返回恢复的数量。
+    """
+    timestamp = now_ms if now_ms is not None else int(time.time() * 1000)
+    count = sop_repo.recover_running(timestamp)
+    if count:
+        _logger.info("recovered %d running SOP checks as check_failed_retry", count)
+    return count

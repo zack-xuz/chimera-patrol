@@ -39,7 +39,7 @@ from typing import Any
 
 from chimera_patrol.config import EvidenceSection
 from chimera_patrol.evidence.clip import save_clip_safely
-from chimera_patrol.evidence.keyframe import KeyframeUnavailable, save_keyframe
+from chimera_patrol.evidence.keyframe import KeyframeUnavailable, save_keyframe, save_keyframe_from_jpeg
 from chimera_patrol.evidence.ring_buffer import RingBuffer
 from chimera_patrol.logging_setup import log_event_generated
 from chimera_patrol.rules.types import CandidateEvent
@@ -124,8 +124,19 @@ class EventPipeline:
         self._tasks: set[asyncio.Task[None]] = set()
         self._closed = False
 
-    async def submit(self, candidate: CandidateEvent) -> PipelineResult:
-        """处理一个候选事件，返回 ``PipelineResult``。详见模块文档的顺序说明。"""
+    async def submit(
+        self,
+        candidate: CandidateEvent,
+        *,
+        keyframe_jpeg: bytes | None = None,
+        review: bool = True,
+    ) -> PipelineResult:
+        """处理一个候选事件，返回 ``PipelineResult``。详见模块文档的顺序说明。
+
+        Args:
+            keyframe_jpeg: 指定关键帧的 JPEG 字节（SOP 事件使用采样帧）。为 None 时从环形缓存选帧。
+            review: 为 False 时不调用 ``on_review``，事件停留在 pending_review，由调用方迁移状态。
+        """
         if self._closed:
             raise RuntimeError("EventPipeline is closed")
 
@@ -133,9 +144,20 @@ class EventPipeline:
         ring = self._ring_buffers.get(candidate.camera_id)
 
         try:
-            annotated_rel, raw_rel = await asyncio.to_thread(
-                self._save_keyframes, event_id, candidate, ring
-            )
+            if keyframe_jpeg is not None:
+                annotated_rel, raw_rel = await asyncio.to_thread(
+                    save_keyframe_from_jpeg,
+                    keyframe_jpeg,
+                    overlay=candidate.overlay,
+                    base_dir=Path(self._evidence.base_dir),
+                    jpeg_quality=self._evidence.ring_jpeg_quality,
+                    camera_id=candidate.camera_id,
+                    event_id=event_id,
+                )
+            else:
+                annotated_rel, raw_rel = await asyncio.to_thread(
+                    self._save_keyframes, event_id, candidate, ring
+                )
         except KeyframeUnavailable as exc:
             _log.error(
                 "event dropped, no keyframe event_id=%s camera_id=%s event_type=%s "
@@ -209,7 +231,8 @@ class EventPipeline:
 
         self._spawn(self._clip_job(event_id, candidate.camera_id, candidate.end_ms, ring))
 
-        await self._run_hook("on_review", event_id, self._on_review(event_id))
+        if review:
+            await self._run_hook("on_review", event_id, self._on_review(event_id))
 
         return PipelineResult(event_id, STATUS_PENDING_REVIEW)
 

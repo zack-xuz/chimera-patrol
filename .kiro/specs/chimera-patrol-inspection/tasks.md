@@ -380,34 +380,34 @@
 ### M3（第 3 周）：API、统计、SOP、前端、演示与收尾
 
 - [ ] 13. FastAPI 应用与 REST API
-  - [ ] 13.1 实现应用工厂与事件、摄像头接口
+  - [x] 13.1 实现应用工厂与事件、摄像头接口
     - 在 chimera_patrol/api/app.py 中实现应用工厂
     - 实现 /api/health、/api/cameras、/api/events（过滤与分页）、/api/events/{id}（含 trajectory 与 status_log）、POST /api/events/{id}/status
     - 统一错误格式与错误码
     - _Requirements: 6.5, 6.6, 7.1, 12.5_
     - 设计参考：HTTP API、EventDTO、CameraDTO
 
-  - [ ] 13.2 实现 MJPEG 流端点
+  - [x] 13.2 实现 MJPEG 流端点
     - 在 chimera_patrol/api/stream.py 中读取 FrameSlot 最新帧，支持 overlay 与 fps 参数
     - JPEG 编码放入线程池，以 multipart/x-mixed-replace 输出
     - _Requirements: 7.2, 2.4_
 
-  - [ ] 13.3 实现证据静态端点
+  - [x] 13.3 实现证据静态端点
     - 在 chimera_patrol/api/media.py 中实现 /media/{path}，规范化路径并限制在 evidence.base_dir 内，越界返回 404
     - _Requirements: 7.5_
 
-  - [ ] 13.4 实现 WsHub 与 /ws/events
+  - [x] 13.4 实现 WsHub 与 /ws/events
     - 在 chimera_patrol/api/ws.py 中实现 hello、heartbeat、ping/pong 与递增 seq
     - 广播 event.created、event.updated、camera.status；单个客户端断开不影响其他客户端
     - _Requirements: 7.3, 12.4_
     - 设计参考：WebSocket 协议
 
-  - [ ] 13.5 接入推送与状态广播
+  - [x] 13.5 接入推送与状态广播
     - 将 WsHub 注入 EventPipeline 与状态机
     - 在事件创建、状态变化、VLM 结果写入、片段就绪或失败时推送 EventDTO（不含 trajectory）
     - _Requirements: 7.3, 6.6_
 
-  - [ ]* 13.6 编写 API 与 WebSocket 测试
+  - [x]* 13.6 编写 API 与 WebSocket 测试
     - 使用 TestClient 覆盖事件列表过滤、详情、改判返回 409 与 422、MJPEG 响应头、WebSocket 推送与 hello 消息
     - _Requirements: 6.5, 6.6, 7.2, 7.3_
 
@@ -418,7 +418,7 @@
     - _Requirements: 8.1, 8.2_
     - 设计参考：StatsDTO、假设 A6、A13、A14
 
-  - [ ]* 14.2 编写统计口径属性测试
+  - [x]* 14.2 编写统计口径属性测试
     - **Property 17: 统计口径**
     - **Validates: Requirements 8.1, 8.2**
     - 测试文件 tests/property/test_stats.py，Hypothesis 示例数不少于 100
@@ -432,7 +432,7 @@
     - 对同一随机事件集合比对 SQL 聚合结果与 compute_stats 结果
     - _Requirements: 8.1, 8.2_
 
-  - [ ] 14.5 实现统计导出
+  - [x] 14.5 实现统计导出
     - 在 chimera_patrol/api/export.py 中实现 JSON 与 CSV 导出，CSV 表头与 dimension 列按设计
     - 在 routes_stats.py 中提供 /api/stats/export，附带 Content-Disposition 响应头
     - _Requirements: 8.3_
@@ -463,23 +463,23 @@
     - **Validates: Requirements 11.3**
     - 测试文件 tests/property/test_sop_sampling.py，Hypothesis 示例数不少于 100
 
-  - [ ] 15.5 实现 normalize_sop_result 并接入 check_sop
+  - [x] 15.5 实现 normalize_sop_result 并接入 check_sop
     - 在 chimera_patrol/sop/normalize.py 中补全缺失步骤为 unknown、忽略多余步骤、校验 status 枚举与 evidence 非空，结构非法时抛出错误
     - approximate 取自步骤的 requires_sequence
     - 在 MockAdapter 与 OpenAICompatibleAdapter 中实现 check_sop（多帧与步骤清单提示词）
     - _Requirements: 11.4, 11.8_
 
-  - [ ]* 15.6 编写 SOP 结果归一化属性测试
+  - [x]* 15.6 编写 SOP 结果归一化属性测试
     - **Property 21: SOP 结果归一化与近似标注**
     - **Validates: Requirements 11.4, 11.8**
     - 测试文件 tests/property/test_sop_normalize.py，Hypothesis 示例数不少于 100
 
-  - [ ] 15.7 扩展仓储与恢复逻辑支持 SOP
+  - [x] 15.7 扩展仓储与恢复逻辑支持 SOP
     - 在 chimera_patrol/store/sop_repo.py 中实现 sop_runs 与 sop_step_results 的读写，并保证同一 Camera 只有一个 running 记录
     - 在 review/recovery.py 中增加启动恢复：遗留的 running 置为 check_failed_retry，原因 service_restart
     - _Requirements: 11.9, 11.10, 12.5_
 
-  - [ ] 15.8 实现 SopChecker 运行流程
+  - [x] 15.8 实现 SopChecker 运行流程
     - 在 chimera_patrol/sop/checker.py 中实现触发校验（SOP 适用性、Camera 在线、无进行中检查）
     - 窗口结束后按 sample_times 从 RingBuffer 取帧并保存采样帧，调用 check_sop 并归一化
     - 成功且存在 fail 时创建 sop_violation 事件，关键帧取首个失败步骤对应的采样帧
@@ -487,43 +487,43 @@
     - _Requirements: 11.3, 11.6, 11.7, 11.9, 11.10_
     - 设计参考：SOP_Checker
 
-  - [ ]* 15.9 编写 SOP 检查结局属性测试
+  - [x]* 15.9 编写 SOP 检查结局属性测试
     - **Property 22: SOP 检查结局**
     - **Validates: Requirements 11.6, 11.9, 11.10**
     - 测试文件 tests/property/test_sop_outcome.py，Hypothesis 示例数不少于 100
 
-  - [ ] 15.10 实现 SOP API 与推送
+  - [x] 15.10 实现 SOP API 与推送
     - 在 chimera_patrol/api/routes_sop.py 中实现 /api/sops、POST /api/sop/runs（返回 202、409、422）、GET /api/sop/runs 与 GET /api/sop/runs/{id}
     - 检查状态变化时推送 sop.run.updated
     - _Requirements: 11.3, 11.9, 7.3_
     - 设计参考：HTTP API、SopRunDTO
 
 - [ ] 16. Dashboard 前端（原生 HTML、CSS、JavaScript）
-  - [ ] 16.1 实现页面骨架与 API、WebSocket 客户端
+  - [x] 16.1 实现页面骨架与 API、WebSocket 客户端
     - 在 web/ 下创建 index.html（含视频墙、事件流、筛选、Stats_Panel、SOP 面板的容器）、css/app.css、js/api.js、js/ws.js
     - ws.js 实现指数退避重连，重连后重新拉取事件与摄像头列表进行对账
     - _Requirements: 7.7, 7.3_
 
-  - [ ] 16.2 实现视频墙
+  - [x] 16.2 实现视频墙
     - 在 web/js/wall.js 中为每路 Camera 渲染指向 MJPEG 流的 img，显示在线或离线状态与最近事件角标，ROI 只读叠加
     - _Requirements: 7.1, 7.2, 1.2_
 
-  - [ ] 16.3 实现事件流与筛选
+  - [x] 16.3 实现事件流与筛选
     - 在 web/js/events.js 中实现新事件置顶、按 id 进行 upsert 更新，显示类型、时间及 CV、VLM 双层徽标
     - 支持按摄像头、类型、状态筛选，dismissed 事件保持可见
     - _Requirements: 7.4, 7.6, 6.5_
 
-  - [ ] 16.4 实现事件详情页与人工改判
+  - [x] 16.4 实现事件详情页与人工改判
     - 在 web/event.html 与 web/js/detail.js 中实现回放区（关键帧与片段）、CV 判定区、VLM 判定区三栏并排
     - 提供改判操作并提交到状态接口
     - _Requirements: 7.5, 6.6, 4.1, 4.2_
 
-  - [ ] 16.5 实现 Stats_Panel 与导出
+  - [x] 16.5 实现 Stats_Panel 与导出
     - 在 web/js/stats.js 中展示 CV 总报警数、dismissed、confirmed、待人工数与误报下降率（null 显示为“—”）
     - 支持按摄像头与类型分桶，提供 JSON 与 CSV 导出按钮
     - _Requirements: 8.1, 8.2, 8.3_
 
-  - [ ] 16.6 实现 SOP 检查面板
+  - [x] 16.6 实现 SOP 检查面板
     - 在 web/js/sop.js 中逐步骤亮灯（pass 绿、fail 红、unknown 灰）并显示依据
     - approximate 为真的步骤加“近似判定”标注；check_failed_retry 时显示失败原因与“重新检查”按钮
     - _Requirements: 11.5, 11.7, 11.9_
@@ -539,7 +539,7 @@
     - 输出到 samples/videos/，并编写 config.demo.yaml 指向这些样例
     - _Requirements: 10.2_
 
-  - [ ] 17.2 实现单进程入口与 --demo 模式
+  - [x] 17.2 实现单进程入口与 --demo 模式
     - 先按 requirements.txt 锁定版本的官方文档核对 Ultralytics 的模型加载 API 再写代码（演示模式会加载权重）
     - 在 chimera_patrol/__main__.py 中实现 python -m chimera_patrol 入口，支持 --demo 与 --config 参数
     - 在单进程内启动 uvicorn、后端流水线、前端静态文件与样例数据
@@ -552,14 +552,14 @@
     - _Requirements: 10.1, 12.1_
 
 - [ ] 18. README 与依赖说明
-  - [ ] 18.1 编写 README
+  - [x] 18.1 编写 README
     - 写明依赖清单与安装方式（指向 requirements.txt）
     - 写明 Windows 与 Linux 下的一条命令启动方式
     - 写明演示路径：启动、触发事件、VLM 拦截误报、在 Stats_Panel 查看误报下降率
     - _Requirements: 10.3, 12.1, 12.2_
 
 - [ ] 19. 端到端自动化验证
-  - [ ] 19.1 编写端到端集成测试
+  - [x] 19.1 编写端到端集成测试
     - 先按 requirements.txt 锁定版本的官方文档核对 Ultralytics 的模型加载 API 再写代码（若测试加载真实权重）
     - 用样例视频驱动流水线，验证事件生成、Mock 复核、API 查询与统计计数一致
     - 验证单路故障不影响其他功能
@@ -570,7 +570,7 @@
     - 真实硬件上的基准测量不属于本任务范围
     - _Requirements: 12.3_
 
-  - [ ] 19.3 编写交付物完整性冒烟测试
+  - [x] 19.3 编写交付物完整性冒烟测试
     - 校验 .kiro/specs/chimera-patrol-inspection 下 requirements.md、design.md、tasks.md 存在
     - 校验 .kiro/steering 至少 2 份、.kiro/hooks 至少 2 个、.kiro/settings/mcp.json 登记了 chimera-vlm
     - 校验 config.yaml、sops.yaml 与样例视频存在

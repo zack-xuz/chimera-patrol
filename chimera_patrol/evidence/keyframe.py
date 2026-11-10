@@ -20,7 +20,7 @@ import numpy as np
 from chimera_patrol.evidence.ring_buffer import Frame, RingBuffer, select_frame
 from chimera_patrol.rules.types import OverlayItem
 
-__all__ = ["KeyframeUnavailable", "save_keyframe"]
+__all__ = ["KeyframeUnavailable", "save_keyframe", "save_keyframe_from_jpeg"]
 
 ANNOTATED_NAME = "keyframe_annotated.jpg"
 RAW_NAME = "keyframe_raw.jpg"
@@ -108,6 +108,44 @@ def save_keyframe(
 
     raw_bytes = frame_bytes if frame_bytes[:3] == _JPEG_MAGIC else _encode(decoded, jpeg_quality)
 
+    annotated = decoded.copy()
+    _draw(annotated, overlay)
+    annotated_bytes = _encode(annotated, jpeg_quality)
+
+    rel_dir = f"{camera_id}/{event_id}"
+    out_dir = base_dir / camera_id / event_id
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / RAW_NAME).write_bytes(raw_bytes)
+        (out_dir / ANNOTATED_NAME).write_bytes(annotated_bytes)
+    except OSError as exc:
+        raise KeyframeUnavailable(f"关键帧写入失败: {exc}") from exc
+
+    return f"{rel_dir}/{ANNOTATED_NAME}", f"{rel_dir}/{RAW_NAME}"
+
+
+def save_keyframe_from_jpeg(
+    jpeg: bytes,
+    *,
+    overlay: Sequence[OverlayItem],
+    base_dir: Path,
+    jpeg_quality: int,
+    camera_id: str,
+    event_id: str,
+) -> tuple[str, str]:
+    """用给定的 JPEG 字节保存关键帧（SOP 事件使用采样帧）。返回 ``(annotated_rel, raw_rel)``。
+
+    语义与 ``save_keyframe`` 一致：原图版保存输入字节，标注版在解码后的副本上绘制 overlay。
+    解码失败或写盘失败时抛出 ``KeyframeUnavailable``。
+    """
+    _check_path_segment("camera_id", camera_id)
+    _check_path_segment("event_id", event_id)
+
+    decoded = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if decoded is None:
+        raise KeyframeUnavailable("给定的关键帧字节无法解码为图像")
+
+    raw_bytes = jpeg if jpeg[:3] == _JPEG_MAGIC else _encode(decoded, jpeg_quality)
     annotated = decoded.copy()
     _draw(annotated, overlay)
     annotated_bytes = _encode(annotated, jpeg_quality)

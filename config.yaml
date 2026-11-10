@@ -72,11 +72,11 @@ detector:
     conf: 0.4                        # person 检测置信度，0-1
   fire_smoke:
     weights: weights/fire_smoke.pt   # 烟火权重，需使用模型实际支持的类别
-    classes: [smoke, fire]           # 烟火类别名
+    classes: [smoke, Fire]           # 烟火类别名，须与权重 names 完全一致（区分大小写）
   helmet:
     weights: weights/helmet.pt       # 安全帽权重
-    helmet_classes: [helmet]         # 佩戴安全帽的类别名
-    no_helmet_classes: [no-helmet, head]  # 未佩戴安全帽的类别名
+    helmet_classes: [Hardhat]        # 佩戴安全帽的类别名（须与权重 names 一致）
+    no_helmet_classes: [NO-Hardhat]  # 未佩戴安全帽的类别名（须与权重 names 一致）
   tracker:
     lost_buffer_s: 2.0               # 目标丢失后保留跟踪的时长（秒，0.5-30）
 

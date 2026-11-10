@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chimera Patrol 巡检台</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Chimera Patrol 巡检台</h1>
+    <span id="ws-state" class="badge muted">连接中</span>
+  </header>
+
+  <main class="layout">
+    <section class="panel wall-panel">
+      <h2>视频墙</h2>
+      <div id="wall" class="wall"></div>
+    </section>
+
+    <section class="panel events-panel">
+      <h2>实时事件 <small id="event-count" class="muted"></small></h2>
+      <div class="filters">
+        <select id="filter-camera" aria-label="按摄像头筛选"></select>
+        <select id="filter-type" aria-label="按类型筛选"></select>
+        <select id="filter-status" aria-label="按状态筛选"></select>
+      </div>
+      <ul id="event-list" class="event-list"></ul>
+    </section>
+
+    <section class="panel stats-panel" id="stats">
+      <h2>统计</h2>
+      <div class="toolbar">
+        <label>摄像头
+          <select id="stats-camera"></select>
+        </label>
+        <label><input type="checkbox" id="stats-include-sop"> 包含 SOP 不合规</label>
+        <button type="button" id="export-json">导出 JSON</button>
+        <button type="button" id="export-csv">导出 CSV</button>
+      </div>
+      <div id="stats-cards" class="stat-cards"></div>
+      <div id="stats-buckets" class="buckets"></div>
+    </section>
+
+    <section class="panel sop-panel" id="sop-panel">
+      <h2>SOP 合规检查</h2>
+      <div class="toolbar">
+        <select id="sop-select" aria-label="选择 SOP"></select>
+        <select id="sop-camera" aria-label="选择摄像头"></select>
+        <input id="sop-operator" type="text" maxlength="32" value="巡检员" aria-label="操作人">
+        <button type="button" id="sop-trigger">触发检查</button>
+      </div>
+      <p id="sop-error" class="error" hidden></p>
+      <div class="sop-body">
+        <ul id="sop-runs" class="run-list"></ul>
+        <div id="sop-detail" class="sop-detail"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/static/js/index.js"></script>
+</body>
+</html>

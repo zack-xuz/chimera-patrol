@@ -29,6 +29,7 @@ from chimera_patrol.rules.smoke_fire import SmokeFireDetection
 from chimera_patrol.rules.types import (
     CandidateEvent,
     FrameResult,
+    OverlayItem,
     HelmetDetection,
     PersonDetection,
     RoiSpec,
@@ -41,6 +42,20 @@ Submit = Callable[[CandidateEvent], None]
 # 把头部裁剪请求投递到事件循环，返回线程安全的 Future；结果为 None 表示兜底失败。
 FallbackSubmit = Callable[[HelmetCropRequest], "concurrent.futures.Future[HelmetCropResult | None]"]
 _PendingFallback = tuple[FallbackRequest, "concurrent.futures.Future[HelmetCropResult | None]"]
+
+
+def _overlay_items(result: FrameResult) -> list[OverlayItem]:
+    """把一帧的检测结果转为可绘制的标注框（供 MJPEG 叠加）。"""
+    items: list[OverlayItem] = [
+        OverlayItem(box=person.box, label="person", conf=person.conf) for person in result.persons
+    ]
+    items.extend(
+        OverlayItem(box=det.box, label=det.label, conf=det.conf) for det in result.smoke_fire
+    )
+    items.extend(
+        OverlayItem(box=det.box, label=det.kind, conf=det.conf) for det in result.helmets
+    )
+    return items
 
 
 def scale_rois(rois: Sequence[RoiConfig], width: int, height: int) -> list[RoiSpec]:
@@ -73,9 +88,11 @@ class DetectWorker(threading.Thread):
         fallback_submit: FallbackSubmit | None = None,
         max_pending_fallback: int = 1,
         fallback_jpeg_quality: int = 85,
+        frame_slot: Any = None,
     ) -> None:
         """
         Args:
+            frame_slot: 可选的 FrameSlot。每处理一帧后把检测框写入其 ``overlay``，供 MJPEG 叠加显示。
             fallback_submit: 安全帽 VLM 兜底的投递函数。为 None 时不做兜底（开关关闭或复核关闭）。
             max_pending_fallback: 本路同时在途的兜底请求上限，取自 vlm.max_concurrency。
                 达到上限时跳过新的兜底请求，该 track 的请求在间隔后再次尝试。
@@ -94,6 +111,7 @@ class DetectWorker(threading.Thread):
         self._fallback_submit = fallback_submit
         self._max_pending_fallback = max_pending_fallback
         self._fallback_jpeg_quality = fallback_jpeg_quality
+        self._frame_slot = frame_slot
         self._pending: list[_PendingFallback] = []
         self._engine: RuleEngine | None = None
         self._reset_requested = threading.Event()
@@ -157,6 +175,8 @@ class DetectWorker(threading.Thread):
                 for kind, box, conf in self._detector.detect_helmets(frame)
             ],
         )
+        if self._frame_slot is not None:
+            self._frame_slot.overlay = _overlay_items(result)
         self._drain_fallback()
         for candidate in self._engine.process(result):
             self._emit(candidate)

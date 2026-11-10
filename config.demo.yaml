@@ -43,31 +43,16 @@ video:
 # 用于安全帽判定作用域）。polygon 为归一化顶点 [x, y]，取值 0~1，每个 ROI 的顶点数需在
 # rules.roi.min_vertices 与 max_vertices 之间，同一 Camera 的 ROI 数不超过 rules.roi.max_per_camera，
 # 且多边形不能自交。
-cameras: []
-# 示例（取消注释后生效）：
-# cameras:
-#   - id: intrusion_real
-#     name: 东门通道
-#     rtsp_url: null                   # 例如 rtsp://user:pass@host/stream，填写后替代文件源
-#     rois:
-#       - id: gate_zone
-#         type: intrusion
-#         name: 东门禁入区
-#         polygon: [[0.1, 0.2], [0.8, 0.2], [0.8, 0.9], [0.1, 0.9]]
-#       - id: work_area
-#         type: work_zone
-#         name: 作业区
-#         polygon: [[0.0, 0.5], [0.5, 0.5], [0.5, 1.0], [0.0, 1.0]]
-
-# 样例视频 ROI 示例（取消注释后生效；坐标与 scripts/generate_samples.py 中 INTRUSION_POLYGON_NORM 一致）：
-# cameras:
-#   - id: intrusion_real              # 对应 samples/videos/intrusion_real.mp4
-#     name: 样例闯入通道
-#     rois:
-#       - id: intrusion_zone
-#         type: intrusion
-#         name: 样例闯入区
-#         polygon: [[0.45, 0.40], [0.94, 0.40], [0.94, 0.94], [0.45, 0.94]]
+cameras:
+  - id: intrusion_real              # 对应 samples/videos/intrusion_real.mp4
+    name: 样例闯入通道
+    rois:
+      - id: intrusion_zone
+        type: intrusion
+        name: 样例闯入区
+        # 坐标与 scripts/generate_samples.py 中 INTRUSION_POLYGON_NORM 一致
+        polygon: [[0.45, 0.40], [0.94, 0.40], [0.94, 0.94], [0.45, 0.94]]
+  # false_positive.mp4 为误报样例，无真实目标，无需 ROI，不在此列出，由视频目录自动接入。
 # false_positive.mp4 为误报样例，无真实目标，无需 ROI。
 # ---------------------------------------------------------------- 检测与跟踪
 
@@ -81,11 +66,11 @@ detector:
     conf: 0.4                        # person 检测置信度，0-1
   fire_smoke:
     weights: weights/fire_smoke.pt   # 烟火权重，需使用模型实际支持的类别
-    classes: [smoke, fire]           # 烟火类别名
+    classes: [smoke, Fire]           # 烟火类别名，须与权重 names 完全一致（区分大小写）
   helmet:
     weights: weights/helmet.pt       # 安全帽权重
-    helmet_classes: [helmet]         # 佩戴安全帽的类别名
-    no_helmet_classes: [no-helmet, head]  # 未佩戴安全帽的类别名
+    helmet_classes: [Hardhat]        # 佩戴安全帽的类别名（须与权重 names 一致）
+    no_helmet_classes: [NO-Hardhat]  # 未佩戴安全帽的类别名（须与权重 names 一致）
   tracker:
     lost_buffer_s: 2.0               # 目标丢失后保留跟踪的时长（秒，0.5-30）
 
