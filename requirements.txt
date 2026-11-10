@@ -12,6 +12,7 @@ numpy==2.4.6
 httpx==0.28.1
 imageio-ffmpeg==0.8.1
 mcp==1.30.0
+python-dotenv==1.2.4
 pytest==9.2.0
 hypothesis==6.170.15
 trackers==2.7.0

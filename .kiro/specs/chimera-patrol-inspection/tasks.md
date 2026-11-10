@@ -577,7 +577,7 @@
     - 测试文件 tests/smoke/test_deliverables.py
     - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
 
-- [ ] 20. Final Checkpoint - 全部测试通过
+- [x] 20. Final Checkpoint - 全部测试通过
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

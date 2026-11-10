@@ -26,6 +26,7 @@ from chimera_patrol.api.app import create_app
 from chimera_patrol.api.context import ApiNotifier, AppContext
 from chimera_patrol.api.ws import WsHub
 from chimera_patrol.config import ConfigError, load_config
+from chimera_patrol.env import load_project_env
 from chimera_patrol.logging_setup import setup_logging
 from chimera_patrol.runtime import PatrolRuntime
 from chimera_patrol.sop.loader import SopConfigError, load_sops
@@ -53,6 +54,7 @@ def _resolve_config(args: argparse.Namespace) -> Path:
 
 
 def run(argv: list[str] | None = None) -> int:
+    load_project_env()
     args = _parse_args(argv)
     config_path = _resolve_config(args)
     try:

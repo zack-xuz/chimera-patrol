@@ -30,9 +30,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import threading
 import time
 from collections.abc import Callable, Sequence
 from concurrent.futures import Future
+from concurrent.futures import wait as futures_wait
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -130,6 +132,9 @@ class PatrolRuntime:
         self._sop: SopChecker | None = None
         self._recovered_count = 0
         self._recovered_sop_count = 0
+        # 已投递到事件循环、尚未完成的候选事件。关闭时需等待它们完成后才能关闭流水线。
+        self._submit_lock = threading.Lock()
+        self._pending_submits: set[Future[Any]] = set()
 
     @property
     def cameras(self) -> Sequence[Camera]:
@@ -305,8 +310,11 @@ class PatrolRuntime:
             fut.result(timeout=timeout_s)
         self._pipeline = None
 
-    async def ashutdown(self, timeout_s: float = 10.0) -> None:
-        """在事件循环内停止线程并关闭流水线与 SOP 任务。"""
+    async def ashutdown(self, timeout_s: float = 60.0) -> None:
+        """在事件循环内关闭。顺序：先停采集与检测线程并等待其退出，再关闭流水线与 SOP 任务。
+
+        检测线程在退出前仍可能向事件循环投递候选事件，因此流水线必须在线程退出之后关闭。
+        """
         await asyncio.to_thread(self._stop_threads, timeout_s)
         await self._close_async_parts()
         self._pipeline = None
@@ -314,14 +322,30 @@ class PatrolRuntime:
     # 内部方法
 
     def _stop_threads(self, timeout_s: float) -> None:
+        """请求所有采集与检测线程退出并等待；再等待已投递的候选事件处理完成。
+
+        超时仍未退出的线程、仍未完成的候选事件都记录为错误。仅在两者都结束后才允许关闭流水线。
+        """
+        threads: list[threading.Thread] = [*self._captures, *self._workers]
         for capture in self._captures:
             capture.stop()
         for worker in self._workers:
             worker.stop()
-        for capture in self._captures:
-            capture.join(timeout_s)
-        for worker in self._workers:
-            worker.join(timeout_s)
+        still_alive: list[str] = []
+        for thread in threads:
+            thread.join(timeout_s)
+            if thread.is_alive():
+                still_alive.append(thread.name)
+        if still_alive:
+            log.error("线程未在 %.0f 秒内退出，仍在运行: %s", timeout_s, ", ".join(still_alive))
+
+        with self._submit_lock:
+            pending = list(self._pending_submits)
+        if pending:
+            log.info("等待 %d 个已投递的候选事件处理完成", len(pending))
+            _, not_done = futures_wait(pending, timeout=timeout_s)
+            if not_done:
+                log.error("候选事件未在 %.0f 秒内处理完成，数量 %d", timeout_s, len(not_done))
         self._captures.clear()
         self._workers.clear()
         self._checker = None
@@ -357,7 +381,14 @@ class PatrolRuntime:
         if self._pipeline is None:
             raise RuntimeError("runtime is not started")
         future = asyncio.run_coroutine_threadsafe(self._pipeline.submit(candidate), self._loop)
-        future.add_done_callback(_log_future)
+        with self._submit_lock:
+            self._pending_submits.add(future)
+        future.add_done_callback(self._submit_done)
+
+    def _submit_done(self, future: Future[Any]) -> None:
+        with self._submit_lock:
+            self._pending_submits.discard(future)
+        _log_future(future)
 
     def _submit_fallback(self, request: HelmetCropRequest) -> Future[HelmetCropResult | None]:
         if self._checker is None:

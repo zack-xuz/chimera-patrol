@@ -139,8 +139,8 @@ vlm:
   # review_enabled 为 true 时需填写 base_url 与 model，并设置环境变量 VLM_API_KEY，否则启动失败。
   provider: openai_compatible
   openai_compatible:
-    base_url: https://api.openai.com/v1  # API 基地址；按实际服务替换（OpenAI 兼容接口）
-    model: your-vision-model             # 请替换为支持图像输入的模型名
+    base_url: https://token.sensenova.cn/v1  # 商汤日日新 TokenPlan 的 OpenAI 兼容地址
+    model: sensenova-6.8-flash           # 视觉模型名；实测不支持图像时依次降级为 sensenova-6.8-flash-lite、kimi-k3
     api_key_env: VLM_API_KEY         # 存放 API Key 的环境变量名（密钥本身不写入配置）
     temperature: 0                   # 采样温度，0-2
     max_retries: 0                   # 适配层重试次数，0-3（总耗时仍受 timeout_s 约束）

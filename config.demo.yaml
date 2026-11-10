@@ -1,7 +1,6 @@
 # Chimera Patrol 演示配置（config.demo.yaml）
-# 本文件是演示配置，仅用于 --demo 离线演示与测试，不得用于真实 VLM 调用。
-# vlm.provider 为 mock（离线确定性返回），因此无需设置 VLM_API_KEY 即可启动。
-# 真实运行请使用 config.yaml。其余字段与 config.yaml 相同，注释以 config.yaml 为准。
+# 本文件是演示配置，仅用于 --demo。VLM 使用商汤日日新 TokenPlan（与 config.yaml 相同的端点与模型），
+# 因此启动前需设置环境变量 VLM_API_KEY。其余字段与 config.yaml 相同，注释以 config.yaml 为准。
 
 # ---------------------------------------------------------------- 应用 / 数据库 / 日志 / WebSocket
 
@@ -50,8 +49,8 @@ cameras:
       - id: intrusion_zone
         type: intrusion
         name: 样例闯入区
-        # 坐标与 scripts/generate_samples.py 中 INTRUSION_POLYGON_NORM 一致
-        polygon: [[0.45, 0.40], [0.94, 0.40], [0.94, 0.94], [0.45, 0.94]]
+        # 坐标与 scripts/generate_samples.py 中 INTRUSION_POLYGON_NORM 一致（按 intrusion_real.mp4 的行人脚点标定）
+        polygon: [[0.30, 0.75], [0.70, 0.75], [0.70, 1.00], [0.30, 1.00]]
   # false_positive.mp4 为误报样例，无真实目标，无需 ROI，不在此列出，由视频目录自动接入。
 # false_positive.mp4 为误报样例，无真实目标，无需 ROI。
 # ---------------------------------------------------------------- 检测与跟踪
@@ -88,7 +87,7 @@ rules:
   trajectory_max_points: 100         # 单个事件记录的轨迹最大点数，2-1000
 
   smoke_fire:
-    conf_threshold: 0.5              # 烟火检测置信度阈值，0-1
+    conf_threshold: 0.30             # 烟火检测置信度阈值，0-1。演示配置调低为 0.30（config.yaml 为 0.5），原因见 README「烟火阈值」
     consecutive_frames: 3            # 烟火需连续命中的已处理帧数（不小于 1）
     same_spot_iou_threshold: 0.3     # 相邻帧判定为同一位置的 IoU 阈值，0-1
 
@@ -128,12 +127,12 @@ vlm:
   auto_decision_threshold: 0.7       # 自动判定所需的置信度，0-1
   image_max_side: 1280               # 送给 VLM 的图片最长边（像素），256-4096
   image_jpeg_quality: 85             # 送给 VLM 的图片 JPEG 质量，50-100
-  # 演示提供方：mock 为离线确定性返回，不调用外部 API，不得用于真实 VLM 调用。
-  provider: mock
+  # 演示提供方：与 config.yaml 相同，调用商汤日日新 TokenPlan 的真实视觉模型。
+  provider: openai_compatible
   openai_compatible:
-    base_url: https://api.openai.com/v1  # 演示时不使用；真实运行见 config.yaml
-    model: your-vision-model             # 演示时不使用；真实运行见 config.yaml
-    api_key_env: VLM_API_KEY         # 存放 API Key 的环境变量名（演示时不需要设置）
+    base_url: https://token.sensenova.cn/v1  # 商汤日日新 TokenPlan 的 OpenAI 兼容地址
+    model: sensenova-6.8-flash           # 视觉模型名（同 config.yaml）
+    api_key_env: VLM_API_KEY         # 存放 API Key 的环境变量名（启动前必须设置）
     temperature: 0                   # 采样温度，0-2
     max_retries: 0                   # 适配层重试次数，0-3（总耗时仍受 timeout_s 约束）
   mock:

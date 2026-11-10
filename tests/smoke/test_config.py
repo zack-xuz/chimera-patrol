@@ -25,11 +25,18 @@ def test_example_config_loads_with_design_defaults() -> None:
     assert cfg.rules.roi.max_per_camera == 10
 
 
-def test_demo_config_loads_without_any_api_key() -> None:
-    cfg = load_config(DEMO, env={})
+def test_demo_config_uses_sensenova_and_requires_key() -> None:
+    cfg = load_config(DEMO, env=TEST_ENV)
 
-    assert cfg.vlm.provider == "mock"
+    assert cfg.vlm.provider == "openai_compatible"
+    assert cfg.vlm.openai_compatible.base_url == "https://token.sensenova.cn/v1"
+    assert cfg.vlm.openai_compatible.model == "sensenova-6.8-flash"
+    assert cfg.vlm.timeout_s == 20
     assert cfg.vlm.review_enabled is True
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(DEMO, env={})
+    assert "vlm.openai_compatible.api_key_env" in [i.path for i in excinfo.value.issues]
 
 
 def test_example_config_without_api_key_fails_on_api_key_env_path() -> None:

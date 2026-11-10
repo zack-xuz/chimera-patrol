@@ -29,8 +29,8 @@ from chimera_patrol.store.stats_sql import compute_stats_sql
 ROOT = Path(__file__).resolve().parents[2]
 DEMO_CONFIG = ROOT / "config.demo.yaml"
 SAMPLE_DIR = ROOT / "samples" / "videos"
-BROKEN_CAMERA = "intrusion_real"
-HEALTHY_CAMERA = "false_positive"
+BROKEN_CAMERA = "false_positive"
+HEALTHY_CAMERA = "intrusion_real"
 
 WEIGHTS_PRESENT = all(
     (ROOT / rel).is_file() for rel in ("weights/fire_smoke.pt", "weights/helmet.pt")
@@ -85,9 +85,12 @@ def _wait_for(predicate, timeout_s: float) -> bool:
     return False
 
 
-def test_end_to_end_with_isolated_camera_failure(tmp_path: Path) -> None:
+def test_end_to_end_with_isolated_camera_failure(tmp_path: Path, monkeypatch) -> None:
     from chimera_patrol.detect.detector import Detector
+    from chimera_patrol.vlm.mock import MockAdapter
 
+    # 配置校验要求复核开启时存在密钥；测试注入 MockAdapter，密钥不会被使用。
+    monkeypatch.setenv("VLM_API_KEY", "placeholder-for-test-only")
     cfg = _config(tmp_path)
     repo = EventRepository(cfg.database.path)
     loop = asyncio.new_event_loop()
@@ -100,6 +103,7 @@ def test_end_to_end_with_isolated_camera_failure(tmp_path: Path) -> None:
         Detector(cfg.detector),
         loop,
         capture_factory=_capture_factory,
+        adapter=MockAdapter(default_verdict="uncertain"),
     )
     try:
         runtime.start()

@@ -47,15 +47,34 @@ Windows 与 Linux 使用同一条命令（在仓库根目录执行）：
 python -m chimera_patrol --demo
 ```
 
-- `--demo` 使用 `config.demo.yaml`（VLM 提供方为 mock，不需要密钥）。
-- 不加 `--demo` 时使用 `config.yaml`。真实 VLM 需要设置环境变量（默认 `VLM_API_KEY`），密钥不写入配置文件。
+- `--demo` 使用 `config.demo.yaml`。
+- 不加 `--demo` 时使用 `config.yaml`。两者的 VLM 都是商汤日日新 TokenPlan（OpenAI 兼容接口），启动前必须设置环境变量 `VLM_API_KEY`，否则配置校验失败并提示字段路径。密钥只从环境变量读取，不写入配置文件、日志或响应。
+  - PowerShell（当前会话）：`$env:VLM_API_KEY = "<你的密钥>"`
+  - PowerShell（永久，新开终端生效）：`setx VLM_API_KEY "<你的密钥>"`
+  - Linux / macOS：`export VLM_API_KEY="<你的密钥>"`
+  - 也可以把密钥写入项目根目录的 `.env` 文件：复制 `.env.example` 为 `.env`，填写 `VLM_API_KEY=` 后的值。程序启动时自动读取，已在系统或 shell 中设置的同名变量优先，不会被 `.env` 覆盖。`.env` 已被 `.gitignore` 排除。
+- VLM 地址为 `https://token.sensenova.cn/v1`，模型为 `sensenova-6.8-flash`，超时 20 秒（见 `vlm.openai_compatible.*` 与 `vlm.timeout_s`）。
 - `--config PATH` 指定其他配置文件，优先于 `--demo`。
 
 启动后访问 <http://127.0.0.1:8000/> 打开巡检台。
 
 ## 演示路径
 
-演示使用 `samples/videos/` 中的两段样例视频（`intrusion_real.mp4` 与 `false_positive.mp4`），`--demo` 会把两路视频都接入。
+演示使用 `samples/videos/` 中的两段真实素材（`intrusion_real.mp4` 与 `false_positive.mp4`），`--demo` 会把两路视频都接入。
+
+## 样例视频
+
+| 文件 | 内容 | 时长 | 来源 | 许可 |
+|---|---|---|---|---|
+| `samples/videos/intrusion_real.mp4` | 仓库通道中两名戴安全帽、穿反光背心的工人行走，用于区域闯入与滞留 | 14 秒（由 `samples/raw/10817415-hd_1920_1080_30fps.mp4` 缩放为 960×540 得到） | Pexels，视频「Workers with Safety Helmets in Warehouse」，https://www.pexels.com/video/workers-with-safety-helmets-in-warehouse-10817415/ | Pexels License，可免费用于商业用途，无需署名 |
+| `samples/videos/false_positive.mp4` | 工厂烟囱排放蒸汽，傍晚光影变化，用于观察烟火模型的误报 | 30 秒（取原片第 15 秒起的 30 秒，缩放为 960×540） | 原片文件名 `13101854_3840_2160_30fps.mp4`，来源页面待确认（见下） | 待确认 |
+
+- 原始素材放在 `samples/raw/`，该目录已被 `.gitignore` 排除（约 223 MB，其中 `13101854_3840_2160_30fps.mp4` 为 198 MB），不随仓库分发。在新环境中使用时，需要先把原始素材放回该目录，再运行 `python scripts/generate_samples.py` 重新剪辑。`samples/videos/` 中的剪辑结果已入库。
+- 剪辑由 `scripts/generate_samples.py` 完成（使用 imageio-ffmpeg 自带的 ffmpeg）。
+- 闯入视频的时长只有 14 秒，低于 20 秒的目标。演示时视频会循环播放（`video.loop: true`）。
+- 误报视频的来源页面与许可尚未核实，发布前需要补充。
+
+**演示路径**
 
 1. 启动服务，打开巡检台，视频墙显示两路画面和在线状态。
 2. 事件流中出现 CV 报警（当前样例中为烟火事件），每条带 CV 与 VLM 两层徽标。
@@ -65,8 +84,25 @@ python -m chimera_patrol --demo
 
 **当前演示的已知限制（需要处理后才能完整演示）**
 
-- 样例视频是合成视频。在 `intrusion_real.mp4` 的 300 帧中，yolov8n 检测不到人（conf 0.1 也没有），因此不会产生区域闯入事件。两段样例上烟火模型都会产生 `smoke_fire` 事件。
-- `--demo` 的 VLM 为 mock，默认 verdict 为 `uncertain`，所有事件进入人工队列。因此演示中不会有 VLM 拦截误报的效果，误报下降率为 0。要演示拦截，可在 `config.demo.yaml` 的 `vlm.mock.by_camera` 中指定结论，或者换成真实 VLM。这种结论是模拟的，不反映画面内容。
+- 区域闯入已在真实素材上触发（见上文的 ROI 标定）。
+- 烟火阈值：`config.demo.yaml` 中 `rules.smoke_fire.conf_threshold` 为 0.30，`config.yaml` 仍为 0.5。原因见下。
+- 演示的 VLM 复核由 SenseNova 完成。没有设置 `VLM_API_KEY` 时，`--demo` 无法启动。
+
+## 烟火阈值（演示配置）
+
+`config.yaml` 的烟火检测置信度阈值为 0.5，这是需求规定的默认值。`config.demo.yaml` 把它调低为 0.30，只用于演示。
+
+在 `false_positive.mp4`（工厂烟囱蒸汽）上，按运行时的抽帧（每 3 帧取 1 帧）和检测器封装统计，烟火模型的命中情况如下（`smoke_fire` 需要同一位置连续 3 个已处理帧命中）：
+
+| 阈值 | 命中帧数（共 300 帧） | 最长连续命中段 | 能否触发 `smoke_fire` |
+|---|---|---|---|
+| 0.45 | 0 | 0 | 否 |
+| 0.40 | 1 | 1 | 否 |
+| 0.35 | 6 | 4 | 是 |
+| 0.30 | 35 | 13 | 是 |
+| 0.25 | 131 | 34 | 是 |
+
+演示配置取 0.30，这段误报素材能产生 `smoke_fire` 事件，进入事件流后由 SenseNova 复核，用于演示误报拦截。0.30 也会放过更多弱信号，误报会增加。正式运行请使用 `config.yaml` 的 0.5，不要沿用演示配置的值。
 
 ## 配置
 

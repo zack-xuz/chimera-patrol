@@ -4,6 +4,8 @@ __pycache__/
 .hypothesis/
 .venv/
 data/
+.env
+samples/raw/
 *.partial.mp4
 weights/
 *.pt

@@ -15,6 +15,8 @@ from typing import Annotated, Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from chimera_patrol.env import load_project_env
+
 Unit = Annotated[float, Field(ge=0, le=1)]
 Point = tuple[Unit, Unit]
 Verdict = Literal["true_positive", "false_positive", "uncertain"]
@@ -420,8 +422,10 @@ def _cross_checks(cfg: AppConfig, env: Mapping[str, str]) -> list[ConfigIssue]:
 def parse_config(data: Any, env: Mapping[str, str] | None = None) -> AppConfig:
     """校验已解析的配置字典（字段级 + 跨字段），返回 AppConfig。
 
-    ``env`` 用于检查密钥环境变量，默认读取 ``os.environ``。
+    ``env`` 用于检查密钥环境变量。未传入时先加载项目 .env，再读取 ``os.environ``。
     """
+    if env is None:
+        load_project_env()
     if data is None:
         data = {}
     if not isinstance(data, dict):
@@ -442,7 +446,11 @@ def parse_config(data: Any, env: Mapping[str, str] | None = None) -> AppConfig:
 
 
 def load_config(path: str | Path, env: Mapping[str, str] | None = None) -> AppConfig:
-    """读取 YAML 配置文件并校验，非法时抛出 ConfigError。"""
+    """读取 YAML 配置文件并校验，非法时抛出 ConfigError。
+
+    先加载项目根目录的 .env（已在环境中设置的变量优先），再读取配置。
+    """
+    load_project_env()
     config_path = Path(path)
     if not config_path.is_file():
         raise ConfigError([ConfigIssue("(file)", f"配置文件不存在: {config_path}")])

@@ -51,7 +51,8 @@ class CooldownTable:
     def __init__(self, cooldown_s: float) -> None:
         if not (cooldown_s >= 0.0) or cooldown_s == float("inf"):
             raise ValueError(f"cooldown_s must be a finite value >= 0, got {cooldown_s!r}")
-        self._cooldown_ms: float = float(cooldown_s) * 1000.0
+        # 规整浮点误差：例如 2.007 * 1000 得到 2007.0000000000002，会使恰好等于冷却时长的触发被拒绝。
+        self._cooldown_ms: float = round(float(cooldown_s) * 1000.0, 6)
         self._last_ms: Dict[Tuple[str, Hashable], int] = {}
         self._spots: Dict[str, List[_SpotRecord]] = {}
         self._last_prune_ms: int | None = None
