@@ -31,7 +31,7 @@ from chimera_patrol.api.export import export_csv, export_json
 from chimera_patrol.api.media import resolve_media_path
 from chimera_patrol.api.routes_stats import get_stats
 from chimera_patrol.api.stream import MEDIA_TYPE, mjpeg_stream
-from chimera_patrol.review.state_machine import EventNotFound, InvalidTransition
+from chimera_patrol.review.state_machine import EventNotFound, InvalidTransition, ReviewDisabled
 from chimera_patrol.sop.checker import SopTriggerError
 
 APP_VERSION = "0.1.0"
@@ -63,6 +63,10 @@ class StatusChangeRequest(BaseModel):
     to_status: Literal["confirmed", "dismissed", "needs_human"]
     operator: str = Field(min_length=OPERATOR_MIN, max_length=OPERATOR_MAX)
     reason: str | None = Field(default=None, max_length=REASON_MAX)
+
+
+class ReReviewRequest(BaseModel):
+    operator: str = Field(min_length=OPERATOR_MIN, max_length=OPERATOR_MAX)
 
 
 class SopRunRequest(BaseModel):
@@ -104,6 +108,8 @@ def create_app(
     app = FastAPI(title="Chimera Patrol", version=APP_VERSION, lifespan=lifespan)
     app.state.ctx = ctx
     notifier = ApiNotifier(ctx)
+    # 后台复检任务的强引用，避免被垃圾回收。
+    background: set[asyncio.Future[Any]] = set()
 
     async def stats_data(
         camera_id: str | None,
@@ -288,6 +294,44 @@ def create_app(
         await notifier.on_event_updated(event_id)
         return dto
 
+    @app.post("/api/events/{event_id}/review", status_code=202)
+    async def rereview_event(event_id: str, body: ReReviewRequest) -> dict[str, Any]:
+        """复检：仅 needs_human、review_failed 可发起。迁移为 pending_review 后在后台重新复核。"""
+        if ctx.rereview is None:
+            raise ApiError(500, "internal_error", "review runtime is not running")
+        try:
+            await _run(
+                ctx.state.begin_rereview,
+                event_id,
+                body.operator,
+                review_enabled=ctx.config.vlm.review_enabled,
+            )
+        except EventNotFound as exc:
+            raise ApiError(404, "not_found", str(exc)) from exc
+        except InvalidTransition as exc:
+            raise ApiError(409, "invalid_transition", str(exc)) from exc
+        except ReviewDisabled as exc:
+            raise ApiError(422, "validation_error", str(exc)) from exc
+        except ValueError as exc:
+            raise ApiError(422, "validation_error", str(exc)) from exc
+
+        dto = await _run(
+            load_event_dto,
+            ctx.repo,
+            ctx.sop_repo,
+            event_id,
+            camera_names=ctx.camera_names(),
+            include_detail=True,
+        )
+        if dto is None:
+            raise ApiError(404, "not_found", f"event {event_id} not found")
+
+        task = asyncio.ensure_future(_run_rereview(ctx.rereview, event_id))
+        background.add(task)
+        task.add_done_callback(background.discard)
+        await notifier.on_event_updated(event_id)
+        return dto
+
     # ------------------------------------------------------------ 统计与导出
 
     @app.get("/api/stats")
@@ -410,6 +454,14 @@ def create_app(
         await ctx.hub.handle_client(ws)
 
     return app
+
+
+async def _run_rereview(rereview: Callable[[str], Awaitable[None]], event_id: str) -> None:
+    """后台执行复检。复核失败由复核器写入 review_failed，这里只记录未预期的异常。"""
+    try:
+        await rereview(event_id)
+    except Exception:
+        _log.exception("复检后台任务异常 event_id=%s", event_id)
 
 
 async def _run(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:

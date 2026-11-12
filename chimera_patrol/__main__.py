@@ -104,6 +104,7 @@ def run(argv: list[str] | None = None) -> int:
         ctx.cameras = list(runtime.cameras)
         ctx.frame_slots = runtime.frame_slots
         ctx.sop = runtime.sop_checker
+        ctx.rereview = runtime.rereview
 
     async def on_shutdown() -> None:
         if runtime is not None:

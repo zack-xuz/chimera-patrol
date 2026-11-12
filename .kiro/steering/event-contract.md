@@ -106,10 +106,14 @@
 | `dismissed` | `confirmed` | `inspector` | 改判 |
 | `confirmed` | `needs_human` | `inspector` | 改判 |
 | `dismissed` | `needs_human` | `inspector` | 改判 |
+| `needs_human` | `pending_review` | `inspector` | 复检（`POST /api/events/{id}/review`，reason `复检请求`） |
+| `review_failed` | `pending_review` | `inspector` | 复检（同上） |
 
 规则：
 
 - 系统迁移只能从 `pending_review` 发起。
+- 复检只允许从 `needs_human` 或 `review_failed` 发起，目标为 `pending_review`，经复检接口进入。复检开始时 `vlm` 字段清空，随后由 VLM_Reviewer 重新判定，判定结果按同一决策规则迁移。复核关闭时禁止复检。
+- 改判接口的目标仍只能是 `confirmed`、`dismissed`、`needs_human`，不能是 `pending_review`。
 - Inspector 改判的目标只能是 `confirmed`、`dismissed`、`needs_human`。目标不能是 `pending_review`。
 - 当前状态为 `pending_review` 时不可改判，返回 409 `invalid_transition`（复核在途）。
 - 目标与当前状态相同，返回 409 `invalid_transition`。
@@ -248,6 +252,7 @@ VLM 视图徽标取值：`未复核`、`true_positive`、`false_positive`、`unc
 - ID 格式：事件 `evt_` + 12 位十六进制；SOP 运行 `sop_` + 12 位十六进制。
 - 改判接口：`POST /api/events/{event_id}/status`，请求体 `{ "to_status", "operator", "reason" }`（`reason` 可选，≤ 200 字符）。
 - SOP 触发：`POST /api/sop/runs` 成功返回 202 与 `running` 状态的 SopRunDTO。
+- VLM 复检：`POST /api/events/{event_id}/review`，请求体 `{ "operator" }`，成功返回 202 与 `pending_review` 的 EventDTO。仅 `needs_human`、`review_failed` 可复检（其他状态 409 `invalid_transition`）；复核关闭时 422 `validation_error`。
 - 摄像头暂停：`POST /api/cameras/{camera_id}/pause` 与 `/resume`；`GET /api/cameras` 每路含布尔字段 `paused`（内存状态，进程重启后为 `false`）。暂停只停止检测与报警，不改变 `camera.status`，视频流不受影响。
 - 只读配置：`GET /api/config/effective`。API Key 只返回 `vlm.api_key.configured`（布尔）与环境变量名，绝不返回取值。
 

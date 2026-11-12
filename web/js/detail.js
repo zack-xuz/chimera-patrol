@@ -71,7 +71,8 @@ function cvColumn(event) {
 function vlmColumn(event) {
   const vlm = event.vlm;
   if (!vlm) {
-    return section("VLM 判定区", el("p", { class: "muted" }, "尚未复核"));
+    const text = event.status === "pending_review" ? "复核中，请稍候…" : "尚未复核";
+    return section("VLM 判定区", el("p", { class: "muted" }, text));
   }
   if (vlm.skipped) {
     return section("VLM 判定区", el("p", { class: "muted" }, "复核已关闭，事件直接进入人工队列"));
@@ -159,12 +160,62 @@ function overrideForm(event) {
   );
 }
 
+// 复检只对待人工与复核失败的事件开放（与服务端规则一致）。
+const REREVIEW_STATUSES = ["needs_human", "review_failed"];
+
+function rereviewBox(event) {
+  if (!REREVIEW_STATUSES.includes(event.status)) return null;
+  const operator = el("input", { type: "text", maxlength: "32", value: "巡检员", "aria-label": "复检人" });
+  const message = el("p", { class: "error", hidden: "" });
+  const button = el("button", { type: "button" }, "VLM 复检");
+  button.addEventListener("click", async () => {
+    message.hidden = true;
+    button.disabled = true;
+    try {
+      const pending = await api.rereview(event.id, { operator: operator.value.trim() });
+      render(pending);
+      pollUntilSettled(event.id);
+    } catch (err) {
+      message.textContent = err instanceof ApiError ? `${err.message}（${err.code}）` : String(err);
+      message.hidden = false;
+      button.disabled = false;
+    }
+  });
+  return el(
+    "div",
+    { class: "override" },
+    el("h3", {}, "VLM 复检"),
+    el("label", {}, "复检人 ", operator),
+    button,
+    message
+  );
+}
+
+// 复检在后台进行，详情页没有 WebSocket 订阅，这里轮询直到离开 pending_review。
+function pollUntilSettled(eventId, attempts = 90) {
+  const timer = setInterval(async () => {
+    attempts -= 1;
+    try {
+      const latest = await api.event(eventId);
+      if (latest.status !== "pending_review" || attempts <= 0) {
+        clearInterval(timer);
+        render(latest);
+      }
+    } catch (_) {
+      if (attempts <= 0) clearInterval(timer);
+    }
+  }, 2000);
+}
+
 export function render(event) {
   document.querySelector("#event-id").textContent = event.id;
+  const vlmCol = vlmColumn(event);
+  const again = rereviewBox(event);
+  if (again) vlmCol.append(again);
   document.querySelector("#detail").replaceChildren(
     replayColumn(event),
     cvColumn(event),
-    vlmColumn(event),
+    vlmCol,
     statusColumn(event)
   );
 }

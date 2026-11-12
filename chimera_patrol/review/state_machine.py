@@ -127,6 +127,19 @@ def _now_ms() -> int:
     return int(time.time() * 1000)
 
 
+# 复检：仅这两种状态可以发起，目标为 pending_review。与改判分开，改判的迁移表不变。
+REREVIEW_FROM: Final[frozenset[str]] = frozenset({NEEDS_HUMAN, REVIEW_FAILED})
+REREVIEW_REASON: Final = "复检请求"
+
+
+class ReviewDisabled(Exception):
+    """复核开关关闭，无法复检。API 层映射为 422 ``validation_error``。"""
+
+    def __init__(self, event_id: str) -> None:
+        self.event_id = event_id
+        super().__init__(f"VLM 复核已关闭，无法复检事件 {event_id}")
+
+
 class EventStateMachine:
     """对事件执行状态迁移，并写入状态日志。
 
@@ -167,6 +180,62 @@ class EventStateMachine:
         """
         _validate_operator(operator)
         self._transition(event_id, to_status, ACTOR_INSPECTOR, operator, reason, now_ms)
+
+    def begin_rereview(
+        self,
+        event_id: str,
+        operator: str,
+        *,
+        review_enabled: bool,
+        now_ms: int | None = None,
+    ) -> None:
+        """Inspector 发起复检：``needs_human`` 或 ``review_failed`` 迁移为 ``pending_review``。
+
+        成功后清空上一次的 VLM 字段（``vlm`` 变为未复核），随后由 VLM_Reviewer 重新判定。
+        异常：``EventNotFound``、``InvalidTransition``（状态不允许）、``ReviewDisabled``（复核关闭）、
+        ``ValueError``（operator 长度非法）。
+        """
+        _validate_operator(operator)
+        event = self._repo.get_event(event_id)
+        if event is None:
+            raise EventNotFound(event_id)
+        if not review_enabled:
+            raise ReviewDisabled(event_id)
+        current = event["status"]
+        if current not in REREVIEW_FROM:
+            raise InvalidTransition(
+                event_id,
+                current,
+                PENDING_REVIEW,
+                ACTOR_INSPECTOR,
+                detail="only needs_human or review_failed can be re-reviewed",
+            )
+
+        timestamp = now_ms if now_ms is not None else _now_ms()
+        try:
+            self._repo.transition_status(
+                event_id,
+                from_status=current,
+                to_status=PENDING_REVIEW,
+                actor_type=ACTOR_INSPECTOR,
+                actor=operator,
+                reason=REREVIEW_REASON,
+                now_ms=timestamp,
+            )
+        except StatusConflictError as exc:
+            raise InvalidTransition(
+                event_id, current, PENDING_REVIEW, ACTOR_INSPECTOR, detail=str(exc)
+            ) from exc
+        # 清空上一次复核结果，避免在复核进行中仍显示旧判定。
+        self._repo.update_vlm_result(event_id, updated_ms=timestamp)
+
+        log_status_change(
+            event_id=event_id,
+            from_status=current,
+            to_status=PENDING_REVIEW,
+            actor=operator,
+            reason=REREVIEW_REASON,
+        )
 
     def _transition(
         self,

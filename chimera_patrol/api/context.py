@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -42,6 +42,8 @@ class AppContext:
     frame_slots: dict[str, FrameSlot] = field(default_factory=dict)
     sop: SopChecker | None = None
     control: CameraControl = field(default_factory=CameraControl)
+    # 复检入口（运行时启动后设置）。未设置时复检接口拒绝执行，不改变事件状态。
+    rereview: Callable[[str], Awaitable[None]] | None = None
 
     def __post_init__(self) -> None:
         self.state = EventStateMachine(self.repo)

@@ -204,11 +204,14 @@ stateDiagram-v2
   dismissed --> confirmed: Inspector 改判
   confirmed --> needs_human: Inspector 改判
   dismissed --> needs_human: Inspector 改判
+  needs_human --> pending_review: Inspector 复检（POST /api/events/{id}/review）
+  review_failed --> pending_review: Inspector 复检（POST /api/events/{id}/review）
 ```
 
 规则：
 
 - 系统迁移只能从 `pending_review` 发起。
+- 复检（Inspector）只允许从 `needs_human` 或 `review_failed` 发起，迁移到 `pending_review`，随后由 VLM_Reviewer 重新判定，判定结果仍按同一决策规则迁移。复检不是改判，目标 `pending_review` 只能经复检接口进入；改判接口的目标仍不能是 `pending_review`。复检开始时清空上一次的 `vlm` 字段。复核开关关闭时禁止复检（422 `validation_error`）。
 - Inspector 改判的目标状态只能是 `confirmed`、`dismissed`、`needs_human`；`pending_review` 状态的事件不可改判（复核在途，返回 409）；目标与当前状态相同返回 409。
 - 每次迁移（系统或人工）都写一条 `event_status_log`；`dismissed` 事件仍保留在事件列表中（需求 6.5）。
 
@@ -466,6 +469,7 @@ class VLMVerdict:
 | GET | `/api/cameras/{camera_id}/stream.mjpg` | query：`overlay`(bool，默认 true，叠加检测框与 ROI)、`fps`(1~30，默认 `video.mjpeg.fps`) | `multipart/x-mixed-replace; boundary=frame`；Camera 不存在 404 |
 | GET | `/api/events` | query：`camera_id`、`event_type`、`status`（三者均支持逗号分隔多值）、`from_ms`、`to_ms`、`limit`(1~200，默认 50)、`offset`(≥0，默认 0) | `{ "items": [EventDTO], "total": 123, "limit": 50, "offset": 0 }`，按 `created_ms DESC, id DESC` |
 | GET | `/api/events/{event_id}` | 无 | EventDTO（含 `trajectory`、`status_log`）；404 |
+| POST | `/api/events/{event_id}/review` | body：`{ "operator": "张三" }`（1~32 字符） | 202 + EventDTO（`status=pending_review`，复核在途）。仅 `needs_human` 或 `review_failed` 可复检，其他状态 409 `invalid_transition`；复核关闭时 422 `validation_error`；事件不存在 404 |
 | POST | `/api/events/{event_id}/status` | body：`{ "to_status": "confirmed\|dismissed\|needs_human", "operator": "张三", "reason": "可选，≤200字符" }` | 更新后的 EventDTO；404/409/422 |
 | GET | `/api/stats` | query：`camera_id`、`from_ms`、`to_ms`、`include_sop`(默认 false) | StatsDTO |
 | GET | `/api/stats/export` | 同 `/api/stats` 的 query + `format=json\|csv`（默认 json） | 带 `Content-Disposition: attachment` 的文件 |

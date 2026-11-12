@@ -33,7 +33,7 @@ import logging
 import os
 import threading
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from concurrent.futures import Future
 from concurrent.futures import wait as futures_wait
 from pathlib import Path
@@ -136,6 +136,7 @@ class PatrolRuntime:
         self._sop: SopChecker | None = None
         self._recovered_count = 0
         self._recovered_sop_count = 0
+        self._review_hook: Callable[[str], Awaitable[None]] | None = None
         # 已投递到事件循环、尚未完成的候选事件。关闭时需等待它们完成后才能关闭流水线。
         self._submit_lock = threading.Lock()
         self._pending_submits: set[Future[Any]] = set()
@@ -143,6 +144,15 @@ class PatrolRuntime:
     @property
     def cameras(self) -> Sequence[Camera]:
         return tuple(self._cameras)
+
+    async def rereview(self, event_id: str) -> None:
+        """对已处于 pending_review 的事件执行 VLM 复核（复检入口）。
+
+        调用方须先完成 ``EventStateMachine.begin_rereview``。复核失败会写入 review_failed，不抛出。
+        """
+        if self._review_hook is None:
+            raise RuntimeError("runtime is not started")
+        await self._review_hook(event_id)
 
     @property
     def control(self) -> CameraControl:
@@ -222,6 +232,9 @@ class PatrolRuntime:
             await review_hook(event_id)
             if self._notifier is not None:
                 await self._notifier.on_event_updated(event_id)
+
+        # 复检与首次复核共用同一条路径（读取关键帧、复核、状态决策、推送）。
+        self._review_hook = on_review
 
         self._pipeline = EventPipeline(
             repository=self._repo,

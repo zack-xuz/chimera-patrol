@@ -53,6 +53,7 @@ export const api = {
   events: (params) => getJSON("/api/events", params),
   event: (id) => getJSON(`/api/events/${encodeURIComponent(id)}`),
   changeStatus: (id, payload) => postJSON(`/api/events/${encodeURIComponent(id)}/status`, payload),
+  rereview: (id, payload) => postJSON(`/api/events/${encodeURIComponent(id)}/review`, payload),
   stats: (params) => getJSON("/api/stats", params),
   statsExportUrl: (format, params) => "/api/stats/export" + buildQuery({ ...(params || {}), format }),
   sops: () => getJSON("/api/sops"),
